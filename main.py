@@ -11,6 +11,7 @@ import plotly.graph_objs as go
 
 import pandas as pd
 import numpy as np
+import cv2
 import json
 import os
 import io
@@ -38,22 +39,38 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
 
-class UploadFileForm(FlaskForm):
-    file = FileField("File")
+class UploadForm(FlaskForm):
+    file = FileField("CSV File")
+    video = FileField("Video File")
     submit = SubmitField("Generate UMAP Embedding")
+# class UploadMP4Form(FlaskForm):
+#     video = FileField("Video File")
 
 @app.route('/', methods = ["GET","POST"])
 @app.route('/home', methods = ["GET","POST"])
 def home():
     plot = None
-    form = UploadFileForm()
+    form = UploadForm()
+    # mp4form = UploadMP4Form()
+   
     if form.validate_on_submit():
-        file = form.file.data # First grab the file
+        csvfile = form.file.data
+        mp4file = form.video.data
         if not os.path.isdir('uploads'):
             os.mkdir('uploads')
-        filepath = os.path.join('uploads', file.filename)
-        file.save(filepath)
-        file_j_df = pd.read_csv(filepath, low_memory=False)
+        if not os.path.isdir(os.path.join('uploads', 'csvs')):
+            os.mkdir(os.path.join('uploads', 'csvs'))
+        if not os.path.isdir(os.path.join('uploads', 'videos')):
+            os.mkdir(os.path.join('uploads', 'videos'))
+        
+        csvfilepath = os.path.join('uploads', 'csvs', csvfile.filename)
+        csvfile.save(csvfilepath)
+        file_j_df = pd.read_csv(csvfilepath, low_memory=False)
+
+        
+        mp4filepath = os.path.join('uploads', 'videos', mp4file.filename)
+        mp4file.save(mp4filepath)
+        mp4 = cv2.VideoCapture(mp4filepath)
 
         pose_chosen = []
 
@@ -78,7 +95,7 @@ def home():
 
         assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
         
-        plot = create_plotly(sampled_embeddings, assignments, file)
+        plot = create_plotly(sampled_embeddings, assignments, csvfile)
    
     return render_template('index.html', form=form, graphJSON=plot)
 
