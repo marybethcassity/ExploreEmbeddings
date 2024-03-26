@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_wtf import FlaskForm
 from wtforms import FileField, SubmitField
 from wtforms.validators import InputRequired
@@ -46,6 +46,24 @@ class UploadForm(FlaskForm):
 # class UploadMP4Form(FlaskForm):
 #     video = FileField("Video File")
 
+@app.route('/relayout', methods=['POST'])
+def relayout():
+    # Get the event data from the request
+    event_data = json.loads(request.data)
+
+    # Check if the event is a 'plotly_relayout' event
+    if 'plotly_relayout' in event_data['event']:
+        # Get the selected point's ID
+        selected_id = event_data['event']['plotly_relayout']['selection']
+
+        # You can perform any desired operation with the selected ID
+        print(f'Selected point ID: {selected_id}')
+
+        # You can return a JSON response if needed
+        return f'You selected point with ID: {selected_id}'
+
+    return jsonify({"selected_id": selected_id})
+
 @app.route('/', methods = ["GET","POST"])
 @app.route('/home', methods = ["GET","POST"])
 def home():
@@ -66,7 +84,6 @@ def home():
         csvfilepath = os.path.join('uploads', 'csvs', csvfile.filename)
         csvfile.save(csvfilepath)
         file_j_df = pd.read_csv(csvfilepath, low_memory=False)
-
         
         mp4filepath = os.path.join('uploads', 'videos', mp4file.filename)
         mp4file.save(mp4filepath)

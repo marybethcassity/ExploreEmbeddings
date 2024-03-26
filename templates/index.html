@@ -21,9 +21,31 @@
         {{ form.submit }}
     </form>
     <div id="graph" style="width:100%;height:500px;"></div>
+    <div id="plot-info"></div>
+    
     <script type="text/javascript">
             var graph = {{graphJSON | safe}};
             Plotly.newPlot('graph', graph,{});
+
+            var plotDiv = document.getElementById('graph');
+        plotDiv.on('plotly_click', function(data) {
+            var clickInfo = data.points.map(function(point) {
+                return {
+                    'x': point.x,
+                    'y': point.y,
+                    'data': point.data
+                };
+            });
+
+            var infoDiv = document.getElementById('plot-info');
+            infoDiv.innerHTML = '';
+
+            clickInfo.forEach(function(info) {
+                var infoElement = document.createElement('p');
+                infoElement.textContent = 'x: ' + info.x + ', y: ' + info.y + ', data: ' + JSON.stringify(info.data);
+                infoDiv.appendChild(infoElement);
+            });
+        });
     </script>
 </body>
 </html>
