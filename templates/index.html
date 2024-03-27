@@ -7,6 +7,23 @@
     <title>Home</title>
     <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-around; /* Adjust the layout as needed */
+            align-items: center;
+        }
+
+        #graph, #frame-container {
+            flex: 1; /* Allows each child to grow equally */
+            max-width: 50%; /* Adjust the width as needed */
+        }
+        #frame-container img {
+            max-width: 100%; /* Ensures the image fits within the container */
+            height: auto; /* Keeps the image aspect ratio */
+            float: right;
+        }
+    </style>
 </head>
 <body>
     <h1>Explore Pose Embeddings</h1>
@@ -20,10 +37,14 @@
         </div>
         {{ form.submit }}
     </form>
-    <div id="graph" style="width:100%;height:500px;"></div>
-    <div id="plot-info"></div>
-    <div id="frame-container" style="width:100%;height:100%;"></div>
+
+    <div class="container">
+        <div id="graph" style="width:100%;height:500px;"></div>
+        <div id="frame-container" style="width:100%;height:100%;"></div>
+    </div>
     
+    <div id="plot-info"></div>
+
     <script type="text/javascript">
             var graph = {{graphJSON | safe}};
             Plotly.newPlot('graph', graph,{});
@@ -54,8 +75,8 @@
                         frameContainer.innerHTML = '';
                         var frameImage = document.createElement('img');
                         frameImage.src = 'data:image/jpeg;base64,' + response.frame_data;
-                        frameImage.width = 3840/10; 
-                        frameImage.height = 2160/10;
+                        frameImage.width = 3840/2; 
+                        frameImage.height = 2160/2;
                         frameContainer.appendChild(frameImage);
                     } else {
                         console.error(response.error);
