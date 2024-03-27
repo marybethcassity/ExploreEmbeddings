@@ -91,6 +91,12 @@ def compute(processed_input_data, framerate):
             data_n_len = len(processed_input_data[n])
             dxy_list = []
             disp_list = []
+
+            frame_mapping = []
+            for k in range(0, data_n_len, round(framerate / 10)):
+                start_frame = k
+                frame_mapping.append(start_frame)
+
             for r in range(data_n_len):
                 if r < data_n_len - 1:
                     disp = []
@@ -162,7 +168,13 @@ def compute(processed_input_data, framerate):
         features = np.array(features)
         scaled_features = np.array(scaled_features)
 
-        return scaled_features, features 
+        num_feature_frames = features.shape[1]  # Assuming features are in shape [num_features, num_frames]
+        stride = round(framerate / 10)
+        frame_mapping = [k * stride for k in range(num_feature_frames)]
+        frame_mapping = np.array(frame_mapping)
+
+
+        return scaled_features, features, frame_mapping
 
 # bsoid_app/extract_features.py # edited
 def subsample(processed_input_data, framerate):
@@ -251,17 +263,37 @@ def plot_classes(sampled_embeddings, assignments, file):
     plt.legend(ncol=3, markerscale=6)
     return fig
 
-def create_plotly(sampled_embeddings, assignments, file):
+def create_plotly(sampled_embeddings, assignments, file, frame_mapping):
     sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
     assignments_filtered = assignments[assignments>=0]    
+    frame_mapping_filtered = frame_mapping[assignments>=0] 
     uk = list(np.unique(assignments_filtered))
     #R = np.linspace(0, 1, len(uk))
     #cmap = plt.cm.get_cmap("Spectral")(R)
     umap_x, umap_y, umap_z = sampled_embeddings_filtered[:, 0], sampled_embeddings_filtered[:, 1], sampled_embeddings_filtered[:, 2]
     
-    fig = px.scatter_3d(x=umap_x, y=umap_y, z=umap_z, color=assignments_filtered.astype(str), 
+    text = [f"Frame: {frame}" for frame in frame_mapping_filtered]
+
+    df = pd.DataFrame({
+        'umap_x': sampled_embeddings_filtered[:, 0],
+        'umap_y': sampled_embeddings_filtered[:, 1],
+        'umap_z': sampled_embeddings_filtered[:, 2],
+        'assignments': assignments_filtered.astype(str),
+        'frame_mapping': frame_mapping_filtered
+    })
+
+    fig = px.scatter_3d(df, x='umap_x', y='umap_y', z='umap_z', color='assignments',
                         labels={'color': 'Assignment'},
-                        title=file.filename)
+                        title=file.filename,
+                        custom_data=['frame_mapping', 'assignments'])
+
+    fig.update_traces(hovertemplate="<br>".join([
+        "Dim. 1: %{x}",
+        "Dim. 2: %{y}",
+        "Dim. 3: %{z}",
+        "Frame: %{customdata[0]}",
+        "Assignment: %{customdata[1]}"
+    ]))
     
     fig.update_layout(scene=dict(
                         xaxis_title='Dim. 1',
@@ -269,7 +301,6 @@ def create_plotly(sampled_embeddings, assignments, file):
                         zaxis_title='Dim. 3'),
                         legend_title_text='Assignment')
 
-    
     fig.update_traces(marker_size=1)
     #fig.show()
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)

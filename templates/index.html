@@ -22,6 +22,7 @@
     </form>
     <div id="graph" style="width:100%;height:500px;"></div>
     <div id="plot-info"></div>
+    <div id="frame-container" style="width:100%;height:100%;"></div>
     
     <script type="text/javascript">
             var graph = {{graphJSON | safe}};
@@ -33,8 +34,36 @@
                 return {
                     'x': point.x,
                     'y': point.y,
-                    'data': point.data
+                    'z': point.z,
+                    'frame': point.customdata[0],
+                    'assignment': point.customdata[1]
                 };
+            });
+
+            $.ajax({
+                url: '/process_click_data',
+                type: 'POST',
+                data: JSON.stringify(clickInfo),
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log('Click data sent successfully:', response);
+
+                    if (response.frame_data) {
+                        // Create an image element and set its src attribute with the frame data
+                        var frameContainer = document.getElementById('frame-container');
+                        frameContainer.innerHTML = '';
+                        var frameImage = document.createElement('img');
+                        frameImage.src = 'data:image/jpeg;base64,' + response.frame_data;
+                        frameImage.width = 3840/10; 
+                        frameImage.height = 2160/10;
+                        frameContainer.appendChild(frameImage);
+                    } else {
+                        console.error(response.error);
+                    }
+                },
+                error: function(error) {
+                    console.error('Error sending click data:', error);
+                }
             });
 
             var infoDiv = document.getElementById('plot-info');
@@ -42,7 +71,8 @@
 
             clickInfo.forEach(function(info) {
                 var infoElement = document.createElement('p');
-                infoElement.textContent = 'x: ' + info.x + ', y: ' + info.y + ', data: ' + JSON.stringify(info.data);
+                infoElement.textContent = 'x: ' + info.x + ', y: ' + info.y + ', z: ' + info.z +
+                                      ', frame: ' + info.frame + ', assignment: ' + info.assignment;
                 infoDiv.appendChild(infoElement);
             });
         });
