@@ -123,6 +123,7 @@ def home():
         pose_chosen = []
     
         file_j_df_array = np.array(file_j_df)
+
         p = st.multiselect('Identified __pose__ to include:', [*file_j_df_array[0, 1:-1:3]], [*file_j_df_array[0, 1:-1:3]])
         for a in p:
             index = [i for i, s in enumerate(file_j_df_array[0, 1:]) if a in s]
@@ -145,18 +146,22 @@ def home():
         assignments_filtered = assignments[assignments>=0]    
         frame_mapping_filtered = frame_mapping[assignments>=0] 
 
+        session['assignments_filtered'] = assignments_filtered.tolist()
+        session['frame_mapping_filtered'] = frame_mapping_filtered.tolist()
+
         plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, filename, frame_mapping_filtered)
-        
-    if clustersform.validate_on_submit() and clustersform.action.data == 'cluster':
+        session['plot'] = plot
+
+    elif clustersform.validate_on_submit() and clustersform.action.data == 'cluster':
         
         mp4filepath = session.get('mp4', None)
         folder_path = session.get('folder_path', None)
-        frame_mapping_filtered = np.array(session.get('frame_mapping_filtered', []))
-        assignments_filtered = np.array(session.get('assignments_filtered', []))
+        frame_mapping_filtered = session.get('frame_mapping_filtered')
+        assignments_filtered = session.get('assignments_filtered')
 
         save_images(mp4filepath, folder_path, frame_mapping_filtered, assignments_filtered)
     
-    return render_template('index.html', uploadform=uploadform, clustersform=clustersform, graphJSON=plot)
+    return render_template('index.html', uploadform=uploadform, clustersform=clustersform, graphJSON=session.get('plot', None))
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()

@@ -263,10 +263,7 @@ def plot_classes(sampled_embeddings, assignments, file):
     plt.legend(ncol=3, markerscale=6)
     return fig
 
-def create_plotly(sampled_embeddings, assignments, file, frame_mapping):
-    sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
-    assignments_filtered = assignments[assignments>=0]    
-    frame_mapping_filtered = frame_mapping[assignments>=0] 
+def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, frame_mapping_filtered):
     uk = list(np.unique(assignments_filtered))
     #R = np.linspace(0, 1, len(uk))
     #cmap = plt.cm.get_cmap("Spectral")(R)
