@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session
 from flask_wtf import FlaskForm
-from wtforms import FileField, SubmitField
+from wtforms import FileField, SubmitField, StringField, HiddenField
 from wtforms.validators import InputRequired
 from werkzeug.utils import secure_filename
 import webbrowser
 import threading
+
+from celery import Celery
 
 import plotly
 import plotly.graph_objs as go
@@ -15,10 +17,12 @@ import cv2
 import json
 import os
 import io
+import shutil
 
 import base64
 
 from bsoid_utils import *
+from tasks import save_images
 
 cluster_range = [0.5, 1]
 
@@ -35,18 +39,27 @@ HDBSCAN_PARAMS = {
 }
 
 app = Flask(__name__)
+SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = 'secretkey'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+app.config['CELERY_BROKER_URL'] = 'http://127.0.0.1:5000/'
+app.config['CELERY_RESULT_BACKEND'] = 'http://127.0.0.1:5000/'
+
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery.conf.update(app.config)
+
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
-
+    
 class UploadForm(FlaskForm):
-    file = FileField("CSV File")
-    video = FileField("Video File")
-    submit = SubmitField("Generate UMAP Embedding")
-# class UploadMP4Form(FlaskForm):
-#     video = FileField("Video File")
+    action = HiddenField(default='upload')
+    folder = StringField('Provide the path to the folder containing the csv and mp4 file:')
+    submit = SubmitField('Generate UMAP Embedding')
+
+class ClustersForm(FlaskForm):
+    action = HiddenField(default='cluster')
+    submit = SubmitField('Save images in clusters')
 
 @app.route('/process_click_data', methods=['POST'])
 def process_click_data():
@@ -79,32 +92,36 @@ def process_click_data():
 @app.route('/home', methods = ["GET","POST"])
 def home():
     plot = None
-    form = UploadForm()
-    # mp4form = UploadMP4Form()
-   
-    if form.validate_on_submit():
-        csvfile = form.file.data
-        mp4file = form.video.data
+    folder_path = None
+    uploadform = UploadForm()
+    clustersform = ClustersForm()
+
+    if uploadform.validate_on_submit() and uploadform.action.data == 'upload':
+
+        folder_path = uploadform.folder.data
+        session['folder_path'] = folder_path
+
         if not os.path.isdir('uploads'):
             os.mkdir('uploads')
         if not os.path.isdir(os.path.join('uploads', 'csvs')):
             os.mkdir(os.path.join('uploads', 'csvs'))
         if not os.path.isdir(os.path.join('uploads', 'videos')):
             os.mkdir(os.path.join('uploads', 'videos'))
-        
-        csvfilepath = os.path.join('uploads', 'csvs', csvfile.filename)
-        csvfile.save(csvfilepath)
-        file_j_df = pd.read_csv(csvfilepath, low_memory=False)
-        
-        mp4filepath = os.path.join('uploads', 'videos', mp4file.filename)
-        mp4file.save(mp4filepath)
-        mp4 = cv2.VideoCapture(mp4filepath)
-        session['mp4'] = mp4filepath
+
+        for filename in os.listdir(folder_path):
+            if filename.endswith('.mp4'):
+                mp4filepath = os.path.join('uploads', 'videos', filename)
+                shutil.copyfile(os.path.join(folder_path,filename), mp4filepath)
+                mp4 = cv2.VideoCapture(mp4filepath)
+                session['mp4'] = mp4filepath
+
+            elif filename.endswith('.csv'):
+                csvfilepath = os.path.join('uploads', 'csvs', filename)
+                shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
+                file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
 
         pose_chosen = []
-
-        #file_j_df = pd.read_csv(file, low_memory=False)
-       
+    
         file_j_df_array = np.array(file_j_df)
         p = st.multiselect('Identified __pose__ to include:', [*file_j_df_array[0, 1:-1:3]], [*file_j_df_array[0, 1:-1:3]])
         for a in p:
@@ -123,10 +140,23 @@ def home():
         sampled_embeddings = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size)
 
         assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
+
+        sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
+        assignments_filtered = assignments[assignments>=0]    
+        frame_mapping_filtered = frame_mapping[assignments>=0] 
+
+        plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, filename, frame_mapping_filtered)
         
-        plot = create_plotly(sampled_embeddings, assignments, csvfile, frame_mapping)
-   
-    return render_template('index.html', form=form, graphJSON=plot)
+    if clustersform.validate_on_submit() and clustersform.action.data == 'cluster':
+        
+        mp4filepath = session.get('mp4', None)
+        folder_path = session.get('folder_path', None)
+        frame_mapping_filtered = np.array(session.get('frame_mapping_filtered', []))
+        assignments_filtered = np.array(session.get('assignments_filtered', []))
+
+        save_images(mp4filepath, folder_path, frame_mapping_filtered, assignments_filtered)
+    
+    return render_template('index.html', uploadform=uploadform, clustersform=clustersform, graphJSON=plot)
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()
