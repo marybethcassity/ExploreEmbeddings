@@ -35,15 +35,15 @@
             {{ uploadform.folder.label }} {{ uploadform.folder }}
         </div>
         <div>
-        {{ uploadform.submit }}
+        {{ uploadform.upload }}
         </div>
     </form>
 
     <form method='POST' enctype='multipart/form-data'>
-        {{ clustersform.hidden_tag() }}
-        {{ clustersform.csrf_token }}
+        {{ clusterform.hidden_tag() }}
+        {{ clusterform.csrf_token }}
         <div>
-            {{ clustersform.submit }} 
+            {{ clusterform.cluster }} 
         </div>
     </form>
 
@@ -98,13 +98,14 @@
 
             var infoDiv = document.getElementById('plot-info');
             infoDiv.innerHTML = '';
-
+            <!-- 
             clickInfo.forEach(function(info) {
                 var infoElement = document.createElement('p');
                 infoElement.textContent = 'x: ' + info.x + ', y: ' + info.y + ', z: ' + info.z +
                                       ', frame: ' + info.frame + ', assignment: ' + info.assignment;
                 infoDiv.appendChild(infoElement);
-            });
+            }); 
+            -->
         });
     </script>
 </body>

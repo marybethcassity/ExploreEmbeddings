@@ -281,7 +281,6 @@ def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, frame
 
     fig = px.scatter_3d(df, x='umap_x', y='umap_y', z='umap_z', color='assignments',
                         labels={'color': 'Assignment'},
-                        title=file,
                         custom_data=['frame_mapping', 'assignments'])
 
     fig.update_traces(hovertemplate="<br>".join([
