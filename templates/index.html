@@ -65,8 +65,9 @@
                     'x': point.x,
                     'y': point.y,
                     'z': point.z,
-                    'frame': point.customdata[0],
-                    'assignment': point.customdata[1]
+                    'frame_mapping': point.customdata[0],
+                    'frame_number': point.customdata[1],
+                    'assignment': point.customdata[2]
                 };
             });
 
@@ -98,14 +99,14 @@
 
             var infoDiv = document.getElementById('plot-info');
             infoDiv.innerHTML = '';
-            <!-- 
+
             clickInfo.forEach(function(info) {
                 var infoElement = document.createElement('p');
-                infoElement.textContent = 'x: ' + info.x + ', y: ' + info.y + ', z: ' + info.z +
-                                      ', frame: ' + info.frame + ', assignment: ' + info.assignment;
+                infoElement.textContent = 'x: ' + info.x.toFixed(3) + ', y: ' + info.y.toFixed(3) + ', z: ' + info.z.toFixed(3) +
+                                      ', mapped frame: ' + info.frame_mapping + ', mp4 frame: ' + info.frame_number + ', assignment: ' + info.assignment;
                 infoDiv.appendChild(infoElement);
             }); 
-            -->
+            
         });
     </script>
 </body>

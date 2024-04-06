@@ -40,26 +40,29 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS):
     file_j_processed, p_sub_threshold = adp_filt(file_j_df, pose_chosen)
     file_j_processed = file_j_processed.reshape((1, file_j_processed.shape[0], file_j_processed.shape[1]))
 
-    scaled_features, features, frame_mapping = compute(file_j_processed, fps)
+    scaled_features, features, frame_mapping, frame_number = compute(file_j_processed, file_j_df_array, fps)
 
     train_size = subsample(file_j_processed, fps)
 
-    sampled_embeddings = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size)
+    sampled_embeddings, sampled_frame_mapping, sampled_frame_number = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number)
 
     assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
 
     sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
     assignments_filtered = assignments[assignments>=0]    
-    frame_mapping_filtered = frame_mapping[assignments>=0] 
+    sampled_frame_mapping_filtered = sampled_frame_mapping[assignments>=0] 
+    sampled_frame_number_filtered =  sampled_frame_number[assignments>=0] 
 
-    plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, csvfilename, frame_mapping_filtered)
+    plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, csvfilename, sampled_frame_mapping_filtered, sampled_frame_number_filtered)
     
-    return plot, frame_mapping_filtered, assignments_filtered, mp4filepath, file_j_df 
+    return plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath
 
-def save_images(mp4filepath, folder_path, frame_mapping_filtered, assignments_filtered):
+def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered):
     if not os.path.isdir(os.path.join(folder_path,'clusters')):
         os.mkdir(os.path.join(folder_path,'clusters'))
 
+    file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+    file_j_df_array = np.array(file_j_df)
     mp4 = cv2.VideoCapture(mp4filepath)
         
     clusters = np.unique(assignments_filtered)
@@ -69,9 +72,27 @@ def save_images(mp4filepath, folder_path, frame_mapping_filtered, assignments_fi
 
             indeces = np.where(assignments_filtered==cluster)[0]
             for index in indeces:
-                mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_mapping_filtered[index])
-                ret, frame = mp4.read()
+
+                frame_number = sampled_frame_number_filtered[index]
+                frame_mapping = sampled_frame_mapping_filtered[index]
+                keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mapping))][0]
             
-                cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping_filtered[index])+".png"),frame)
+                x = keypoint_data[1::3]
+                y = keypoint_data[2::3]
+
+                xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                try:
+                    xy = [(int(float(x)), int(float(y))) for x, y in xy]
+                except:
+                    print(f"frame_mapping_filtered: {sampled_frame_mapping_filtered}")
+                    print(f"index: {index}")
+                
+                mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+                ret, frame = mp4.read()
+
+                for point in xy: 
+                    cv2.circle(frame, point, radius=10, color=(0, 0, 255), thickness = -1)
+            
+                cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping)+".png"),frame)
                 
     mp4.release()

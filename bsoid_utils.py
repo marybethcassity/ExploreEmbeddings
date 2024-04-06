@@ -77,7 +77,7 @@ def load_feats(path, name):
     return [i for i in data]
 
 # bsoid_app/extract_features.py # edited
-def compute(processed_input_data, framerate):
+def compute(processed_input_data, file_j_df_array, framerate):
         #if st.button("__Extract Features__"):
         #    funfacts = randfacts.getFact()
         #    st.info(str.join('', ('Extracting... Here is a random fact: ', funfacts)))
@@ -91,11 +91,6 @@ def compute(processed_input_data, framerate):
             data_n_len = len(processed_input_data[n])
             dxy_list = []
             disp_list = []
-
-            frame_mapping = []
-            for k in range(0, data_n_len, round(framerate / 10)):
-                start_frame = k
-                frame_mapping.append(start_frame)
 
             for r in range(data_n_len):
                 if r < data_n_len - 1:
@@ -136,9 +131,15 @@ def compute(processed_input_data, framerate):
             ang_feat = np.array(ang_boxcar)
             f.append(np.vstack((dxy_feat[:, 1:], ang_feat, disp_feat)))
             my_bar.progress(round((n + 1) / len(processed_input_data) * 100))
+        
+        frame_mapping  = []
+        frame_number = []
+
         for m in range(0, len(f)):
             f_integrated = np.zeros(len(processed_input_data[m]))
             for k in range(round(framerate / 10), len(f[m][0]), round(framerate / 10)):
+                frame_number.append(k)
+                frame_mapping.append(file_j_df_array[k+2][0])
                 if k > round(framerate / 10):
                     f_integrated = np.concatenate(
                         (f_integrated.reshape(f_integrated.shape[0], f_integrated.shape[1]),
@@ -168,13 +169,10 @@ def compute(processed_input_data, framerate):
         features = np.array(features)
         scaled_features = np.array(scaled_features)
 
-        num_feature_frames = features.shape[1]  # Assuming features are in shape [num_features, num_frames]
-        stride = round(framerate / 10)
-        frame_mapping = [k * stride for k in range(num_feature_frames)]
         frame_mapping = np.array(frame_mapping)
+        frame_number = np.array(frame_number)
 
-
-        return scaled_features, features, frame_mapping
+        return scaled_features, features, frame_mapping, frame_number
 
 # bsoid_app/extract_features.py # edited
 def subsample(processed_input_data, framerate):
@@ -194,7 +192,7 @@ def subsample(processed_input_data, framerate):
         return train_size
     
 # bsoid_app/extract_features.py # edited
-def learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size):
+def learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number):
     input_feats = scaled_features.T
 
     pca = PCA()
@@ -203,18 +201,23 @@ def learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size):
     if train_size > input_feats.shape[0]:
         train_size = input_feats.shape[0]
     np.random.seed(0)
-    sampled_input_feats = input_feats[np.random.choice(input_feats.shape[0], train_size, replace=False)]
-    features_transposed = features.T
-    np.random.seed(0)
-    sampled_features = features_transposed[np.random.choice(features_transposed.shape[0],
-                                                                        train_size, replace=False)]
+    
+    random_choice = np.random.choice(input_feats.shape[0], train_size, replace=False)
+    sampled_input_feats = input_feats[random_choice]
+    sampled_frame_mapping = frame_mapping[random_choice]
+    sampled_frame_number = frame_number[random_choice]
+
+    # features_transposed = features.T
+    # np.random.seed(0)
+    # sampled_features = features_transposed[np.random.choice(features_transposed.shape[0],
+    #                                                                     train_size, replace=False)]
 
     learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions,
                                                 **UMAP_PARAMS).fit(sampled_input_feats)
 
     sampled_embeddings = learned_embeddings.embedding_
 
-    return sampled_embeddings
+    return sampled_embeddings, sampled_frame_mapping, sampled_frame_number
 
 # bsoid_app/clustering.py # edited 
 def hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS):
@@ -263,42 +266,31 @@ def plot_classes(sampled_embeddings, assignments, file):
     plt.legend(ncol=3, markerscale=6)
     return fig
 
-def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, frame_mapping_filtered):
+def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampled_frame_mapping_filtered, sampled_frame_number_filtered):
     uk = list(np.unique(assignments_filtered))
-    #R = np.linspace(0, 1, len(uk))
-    #cmap = plt.cm.get_cmap("Spectral")(R)
     umap_x, umap_y, umap_z = sampled_embeddings_filtered[:, 0], sampled_embeddings_filtered[:, 1], sampled_embeddings_filtered[:, 2]
     
-    text = [f"Frame: {frame}" for frame in frame_mapping_filtered]
+    text = [f"Frame: {frame}" for frame in sampled_frame_mapping_filtered]
 
     df = pd.DataFrame({
         'umap_x': sampled_embeddings_filtered[:, 0],
-        'umap_y': sampled_embeddings_filtered[:, 1],
+        'umap_y': sampled_embeddings_filtered[:, 1],  
         'umap_z': sampled_embeddings_filtered[:, 2],
         'assignments': assignments_filtered.astype(str),
-        'frame_mapping': frame_mapping_filtered
+        'frame_mapping': sampled_frame_mapping_filtered, 
+        'frame_number': sampled_frame_number_filtered
     })
 
     fig = px.scatter_3d(df, x='umap_x', y='umap_y', z='umap_z', color='assignments',
                         labels={'color': 'Assignment'},
-                        custom_data=['frame_mapping', 'assignments'])
-
-    fig.update_traces(hovertemplate="<br>".join([
-        "Dim. 1: %{x}",
-        "Dim. 2: %{y}",
-        "Dim. 3: %{z}",
-        "Frame: %{customdata[0]}",
-        "Assignment: %{customdata[1]}"
-    ]))
-    
-    fig.update_layout(scene=dict(
-                        xaxis_title='Dim. 1',
-                        yaxis_title='Dim. 2',
-                        zaxis_title='Dim. 3'),
-                        legend_title_text='Assignment')
+                        custom_data=['frame_mapping', 'frame_number', 'assignments'])
 
     fig.update_traces(marker_size=1)
-    #fig.show()
+
+    fig.update_traces(hovertemplate="<br>".join([
+    "Frame: %{customdata[0]}"
+    ]))
+
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     print(type(graphJSON))
     return graphJSON
