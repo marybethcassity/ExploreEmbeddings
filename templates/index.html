@@ -7,6 +7,7 @@
     <title>Home</title>
     <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.4.1/dist/panzoom.min.js"></script>
     <style>
         .container {
             display: flex;
@@ -14,14 +15,28 @@
             align-items: center;
         }
 
-        #graph, #frame-container {
+        #graph {
+            flex: 1; /* Allows each child to grow equally */
+            max-width: 50%; /* Adjust the width as needed */   
+        }
+
+        #frame-container {
             flex: 1; /* Allows each child to grow equally */
             max-width: 50%; /* Adjust the width as needed */
+            float: right;
+            position: relative;
+            overflow: hidden;  
+            align-items: center;      
+            justify-content: center; 
         }
+        
         #frame-container img {
             max-width: 100%; /* Ensures the image fits within the container */
             height: auto; /* Keeps the image aspect ratio */
-            float: right;
+            flex: none;  
+            transform-origin: 50% 50%;
+            transform: scale(1) translate(0px, 0px);
+            cursor: grab;
         }
     </style>
 </head>
@@ -48,8 +63,8 @@
     </form>
 
     <div class="container">
-        <div id="graph" style="width:100%;height:500px;"></div>
-        <div id="frame-container" style="width:100%;height:100%;"></div>
+        <div id="graph"></div>
+        <div id="frame-container"><div id="img"></div></div>
     </div>
     
     <div id="plot-info"></div>
@@ -88,9 +103,20 @@
                         frameImage.width = 3840/2; 
                         frameImage.height = 2160/2;
                         frameContainer.appendChild(frameImage);
+
+                        const panzoom = Panzoom(frameImage, {
+                            minScale: 1,
+                            maxScale: 10
+                        });
+
+                        frameContainer.addEventListener('wheel', function(event) {
+                            panzoom.zoomWithWheel(event);
+                        });
+                    
                     } else {
                         console.error(response.error);
                     }
+
                 },
                 error: function(error) {
                     console.error('Error sending click data:', error);

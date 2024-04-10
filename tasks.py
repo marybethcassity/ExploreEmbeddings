@@ -91,7 +91,7 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
                 ret, frame = mp4.read()
 
                 for point in xy: 
-                    cv2.circle(frame, point, radius=10, color=(0, 0, 255), thickness = -1)
+                    cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
             
                 cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping)+".png"),frame)
                 

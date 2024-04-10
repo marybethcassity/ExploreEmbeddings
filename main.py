@@ -82,7 +82,7 @@ def process_click_data():
                 xy = [(int(float(x)), int(float(y))) for x, y in xy]
 
                 for point in xy: 
-                    cv2.circle(frame, point, radius=10, color=(0, 0, 255), thickness = -1)
+                    cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
                 
                 _, buffer = cv2.imencode('.jpg', frame)
                 frame_data = base64.b64encode(buffer).decode('utf-8')
