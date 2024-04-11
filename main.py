@@ -3,6 +3,8 @@ from flask_wtf import FlaskForm
 from wtforms import  SubmitField, StringField, HiddenField
 import webbrowser
 import threading
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 
 # from celery import Celery
 
@@ -36,11 +38,31 @@ SECRET_KEY = os.urandom(32)
 app.config['SECRET_KEY'] = 'secretkey'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+# see https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/ 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'  
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+
 # app.config['CELERY_BROKER_URL'] = 'http://127.0.0.1:5000/'
 # app.config['CELERY_RESULT_BACKEND'] = 'http://127.0.0.1:5000/'
 
 # celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 # celery.conf.update(app.config)
+
+db = SQLAlchemy(app)
+
+class SessionData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    folder_path = db.Column(db.String(500))
+    csv_path = db.Column(db.String(500))
+    mp4_path = db.Column(db.String(500))
+    assignments_filtered = db.Column(db.PickleType)
+    sampled_frame_number_filtered = db.Column(db.PickleType)
+    sampled_frame_mapping_filtered = db.Column(db.PickleType)
+
+with app.app_context():
+    db.create_all()
+
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
@@ -61,10 +83,19 @@ def process_click_data():
     frame_number = click_data[0]['frame_number']
 
     if frame_mapping is not None:
-        csvfilepath = session.get('csv')
+        
+        session_data_id = session.get('session_data_id')
+
+        if session_data_id:
+            session_data = SessionData.query.get(session_data_id)
+            if session_data:
+                csvfilepath = session_data.csv_path
+                mp4filepath = session_data.mp4_path
+
+        #csvfilepath = session.get('csv')
         file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
         file_j_df_array = np.array(file_j_df)
-        mp4filepath = session.get('mp4')
+        #mp4filepath = session.get('mp4')
         if mp4filepath is not None:
             mp4 = cv2.VideoCapture(mp4filepath)
             mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
@@ -106,27 +137,56 @@ def home():
     clusterform = ClusterForm()
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
+        db.session.query(SessionData).delete()
+        db.session.commit()
     
         folder_path = uploadform.folder.data
-        session['folder_path'] = folder_path
+        #session['folder_path'] = folder_path
 
         plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS)
 
-        session['csv'] = csvfilepath
-        session['mp4'] = mp4filepath
-        session['assignments_filtered'] = assignments_filtered.tolist()
-        session['sampled_frame_number_filtered'] = sampled_frame_number_filtered.tolist()
-        session['sampled_frame_mapping_filtered'] = sampled_frame_mapping_filtered.tolist()
-        #session['plot'] = plot
+        #session['csv'] = csvfilepath
+        #session['mp4'] = mp4filepath
+        #session['assignments_filtered'] = assignments_filtered.tolist()
+        #session['sampled_frame_number_filtered'] = sampled_frame_number_filtered.tolist()
+        #session['sampled_frame_mapping_filtered'] = sampled_frame_mapping_filtered.tolist()
+        ##session['plot'] = plot
+
+        session_data = SessionData(
+            folder_path=folder_path,
+            csv_path=csvfilepath,
+            mp4_path=mp4filepath,
+            assignments_filtered=assignments_filtered,
+            sampled_frame_number_filtered=sampled_frame_number_filtered,
+            sampled_frame_mapping_filtered=sampled_frame_mapping_filtered,
+        )
+
+        db.session.add(session_data)
+        db.session.commit()
+
+        session['session_data_id'] = session_data.id
+
         
     if clusterform.validate_on_submit() and clusterform.cluster.data:
         
-        csvfilepath = session.get('csv')
-        mp4filepath = session.get('mp4')
-        folder_path = session.get('folder_path')
-        assignments_filtered = session.get('assignments_filtered')
-        sampled_frame_number_filtered = session.get('sampled_frame_number_filtered')
-        sampled_frame_mapping_filtered = session.get('sampled_frame_mapping_filtered')
+        #csvfilepath = session.get('csv')
+        #mp4filepath = session.get('mp4')
+        #folder_path = session.get('folder_path')
+        #assignments_filtered = session.get('assignments_filtered')
+        #sampled_frame_number_filtered = session.get('sampled_frame_number_filtered')
+        #sampled_frame_mapping_filtered = session.get('sampled_frame_mapping_filtered')
+
+        session_data_id = session.get('session_data_id')
+
+        if session_data_id:
+            session_data = SessionData.query.get(session_data_id)
+            if session_data:
+                csvfilepath = session_data.csv_path
+                mp4filepath = session_data.mp4_path
+                folder_path = session_data.folder_path
+                assignments_filtered = session_data.assignments_filtered
+                sampled_frame_number_filtered = session_data.sampled_frame_number_filtered
+                sampled_frame_mapping_filtered = session_data.sampled_frame_mapping_filtered
         
         save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered)
     
