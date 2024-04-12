@@ -77,6 +77,16 @@ class FractionWidget(Input):
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
+
+# class UMAPForm(FlaskForm):
+#     action = HiddenField(default='upload')
+#     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
+#     upload = SubmitField('Step 1: Generate UMAP Embedding')    
+
+# class HDBSCANForm(FlaskForm):
+#     action = HiddenField(default='upload')
+#     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
+#     upload = SubmitField('Step 1: Generate UMAP Embedding')
     
 class UploadForm(FlaskForm):
     action = HiddenField(default='upload')
