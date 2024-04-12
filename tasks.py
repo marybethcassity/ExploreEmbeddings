@@ -2,6 +2,8 @@ import numpy as np
 import os 
 import cv2
 import shutil
+import matplotlib.pyplot as plt 
+import matplotlib
 
 #from celery import Celery
 
@@ -60,6 +62,8 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
 def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered):
     if not os.path.isdir(os.path.join(folder_path,'clusters')):
         os.mkdir(os.path.join(folder_path,'clusters'))
+    if not os.path.isdir(os.path.join(folder_path,'plots')):
+        os.mkdir(os.path.join(folder_path,'plots'))
 
     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
     file_j_df_array = np.array(file_j_df)
@@ -69,8 +73,24 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
     for cluster in clusters:
         if not os.path.isdir(os.path.join(folder_path,'clusters',str(cluster))):
             os.mkdir(os.path.join(folder_path,'clusters',str(cluster)))
-
+            
             indeces = np.where(assignments_filtered==cluster)[0]
+
+            frames = sampled_frame_mapping_filtered[indeces]
+            frames = frames.astype(int)
+            sorted_frames = np.sort(frames)
+            differences = np.diff(sorted_frames)
+            min_diff = np.min(differences)
+            max_diff = np.max(differences)
+            bins = np.arange(min_diff, max_diff + 2)
+            matplotlib.use('Agg')
+            plt.hist(differences, bins=bins, edgecolor='black')  
+            plt.title(f'Cluster {cluster}')
+            plt.xlabel('Frame Difference')
+            plt.ylabel('Frequency')
+            plt.savefig(os.path.join(folder_path,'plots',str(cluster)+".png")) 
+            plt.clf()
+
             for index in indeces:
 
                 frame_number = sampled_frame_number_filtered[index]
@@ -96,3 +116,5 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
                 cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping)+".png"),frame)
                 
     mp4.release()
+
+    

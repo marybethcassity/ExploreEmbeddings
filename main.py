@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session 
 from flask_wtf import FlaskForm
-from wtforms import FloatField, SubmitField, StringField, HiddenField
+from wtforms import FloatField, SubmitField, StringField, HiddenField, Field
 from wtforms.widgets import Input
 import webbrowser
 import threading
@@ -74,6 +74,25 @@ class FractionWidget(Input):
         kwargs.setdefault('max', 1)
         kwargs.setdefault('step', 0.05)  # Adjust step as needed
         return super(FractionWidget, self).__call__(field, **kwargs)
+    
+# class ClusterSizeWidget:
+#     def __call__(self, field, **kwargs):
+#         kwargs.setdefault('type', 'range')
+#         kwargs.setdefault('min', field.min)
+#         kwargs.setdefault('max', field.max)
+#         kwargs.setdefault('step', field.step)
+#         # The value will not be directly set here because HTML does not support ranges as values directly
+#         return HTMLString(f'<input {html_params(name=field.name, **kwargs)}>' 
+#                           f'<input {html_params(name=field.name, **kwargs)}>')
+    
+# class RangeSliderField(Field):
+#     widget = ClusterSizeWidget()
+
+#     def __init__(self, label=None, validators=None, min=0, max=100, step=1, **kwargs):
+#         super(RangeSliderField, self).__init__(label, validators, **kwargs)
+#         self.min = min
+#         self.max = max
+#         self.step = step
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
@@ -83,10 +102,10 @@ def open_browser():
 #     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
 #     upload = SubmitField('Step 1: Generate UMAP Embedding')    
 
-# class HDBSCANForm(FlaskForm):
-#     action = HiddenField(default='upload')
-#     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
-#     upload = SubmitField('Step 1: Generate UMAP Embedding')
+class HDBSCANForm(FlaskForm):
+    action = HiddenField(default='upload')
+    folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
+    upload = SubmitField('Step 1: Generate UMAP Embedding')
     
 class UploadForm(FlaskForm):
     action = HiddenField(default='upload')
@@ -96,6 +115,9 @@ class UploadForm(FlaskForm):
 class FractionForm(FlaskForm):
     action = HiddenField(default='adjust')
     slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', widget=FractionWidget())
+
+# class ClusterSizeForm(FlaskForm):
+#     range_slider = RangeSliderField('Set the range of the minimum cluster size within the range of 0.02 to 1:', min=0.02, max=5.00, step=0.02)
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
@@ -161,6 +183,7 @@ def home():
     uploadform = UploadForm()
     clusterform = ClusterForm()
     fractionform = FractionForm()
+    #clustersizeform = ClusterSizeForm()
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         db.session.query(SessionData).delete()
@@ -168,6 +191,7 @@ def home():
     
         folder_path = uploadform.folder.data
         training_fraction = fractionform.slider.data
+        #range_values = clustersizeform.form.getlist('range_slider')
         #session['folder_path'] = folder_path
 
         plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction)
