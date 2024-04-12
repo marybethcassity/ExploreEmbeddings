@@ -7,7 +7,7 @@ import shutil
 
 from bsoid_utils import *
 
-def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS):
+def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction):
     if not os.path.isdir('uploads'):
         os.mkdir('uploads')
     if not os.path.isdir(os.path.join('uploads', 'csvs')):
@@ -42,7 +42,7 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS):
 
     scaled_features, features, frame_mapping, frame_number = compute(file_j_processed, file_j_df_array, fps)
 
-    train_size = subsample(file_j_processed, fps)
+    train_size = subsample(file_j_processed, fps, training_fraction)
 
     sampled_embeddings, sampled_frame_mapping, sampled_frame_number = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number)
 

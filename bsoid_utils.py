@@ -175,12 +175,12 @@ def compute(processed_input_data, file_j_df_array, framerate):
         return scaled_features, features, frame_mapping, frame_number
 
 # bsoid_app/extract_features.py # edited
-def subsample(processed_input_data, framerate):
+def subsample(processed_input_data, framerate, training_fraction):
         data_size = 0
         for n in range(len(processed_input_data)):
             data_size += len(range(round(framerate / 10), processed_input_data[n].shape[0],
                                    round(framerate / 10)))
-        fraction = 1 #st.number_input('Enter training input __fraction__ (do not change this value if you wish '
+        fraction = training_fraction #st.number_input('Enter training input __fraction__ (do not change this value if you wish '
                    #                'to generate the side-by-side video seen on our GitHub page):',
                    #                min_value=0.1, max_value=1.0, value=1.0)
         if fraction == 1.0:
@@ -273,15 +273,15 @@ def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampl
     text = [f"Frame: {frame}" for frame in sampled_frame_mapping_filtered]
 
     df = pd.DataFrame({
-        'umap_x': sampled_embeddings_filtered[:, 0],
-        'umap_y': sampled_embeddings_filtered[:, 1],  
-        'umap_z': sampled_embeddings_filtered[:, 2],
+        'x': sampled_embeddings_filtered[:, 0],
+        'y': sampled_embeddings_filtered[:, 1],  
+        'z': sampled_embeddings_filtered[:, 2],
         'assignments': assignments_filtered.astype(str),
         'frame_mapping': sampled_frame_mapping_filtered, 
         'frame_number': sampled_frame_number_filtered
     })
 
-    fig = px.scatter_3d(df, x='umap_x', y='umap_y', z='umap_z', color='assignments',
+    fig = px.scatter_3d(df, x='x', y='y', z='z', color='assignments',
                         labels={'color': 'Assignment'},
                         custom_data=['frame_mapping', 'frame_number', 'assignments'])
 

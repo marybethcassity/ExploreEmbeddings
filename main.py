@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session 
 from flask_wtf import FlaskForm
-from wtforms import  SubmitField, StringField, HiddenField
+from wtforms import FloatField, SubmitField, StringField, HiddenField
+from wtforms.widgets import Input
 import webbrowser
 import threading
 from flask_sqlalchemy import SQLAlchemy
@@ -63,18 +64,32 @@ class SessionData(db.Model):
 with app.app_context():
     db.create_all()
 
+class FractionWidget(Input):
+    input_type = 'range'
+
+    def __call__(self, field, **kwargs):
+        kwargs.setdefault('id', field.id)
+        kwargs.setdefault('type', self.input_type)
+        kwargs.setdefault('min', 0.05)
+        kwargs.setdefault('max', 1)
+        kwargs.setdefault('step', 0.05)  # Adjust step as needed
+        return super(FractionWidget, self).__call__(field, **kwargs)
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
     
 class UploadForm(FlaskForm):
     action = HiddenField(default='upload')
-    folder = StringField('Provide the path to the folder containing the csv and mp4 file:')
-    upload = SubmitField('Generate UMAP Embedding')
+    folder = StringField('Provide the path to the folder containing the csv and mp4 files:')
+    upload = SubmitField('Step 1: Generate UMAP Embedding')
+
+class FractionForm(FlaskForm):
+    action = HiddenField(default='adjust')
+    slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', widget=FractionWidget())
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
-    cluster = SubmitField('Save images in clusters')
+    cluster = SubmitField('Step 2: Save images in clusters')
 
 @app.route('/process_click_data', methods=['POST'])
 def process_click_data():
@@ -135,15 +150,17 @@ def home():
     file_j_df = None
     uploadform = UploadForm()
     clusterform = ClusterForm()
+    fractionform = FractionForm()
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         db.session.query(SessionData).delete()
         db.session.commit()
     
         folder_path = uploadform.folder.data
+        training_fraction = fractionform.slider.data
         #session['folder_path'] = folder_path
 
-        plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS)
+        plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction)
 
         #session['csv'] = csvfilepath
         #session['mp4'] = mp4filepath
@@ -190,8 +207,8 @@ def home():
         
         save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered)
     
-    return render_template('index.html', uploadform=uploadform, clusterform=clusterform, graphJSON = plot)
+    return render_template('index.html', uploadform=uploadform, clusterform=clusterform, fractionform=fractionform, graphJSON = plot)
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()
-    app.run(debug = True)
+    app.run(debug = False)

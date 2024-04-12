@@ -17,7 +17,8 @@
 
         #graph {
             flex: 1; /* Allows each child to grow equally */
-            max-width: 50%; /* Adjust the width as needed */   
+            width: 3840/2px; /* Adjust the width as needed */   
+            height: 2160/2px;
         }
 
         #frame-container {
@@ -43,15 +44,31 @@
 <body>
     <h1>Explore Pose Embeddings</h1>
 
+    <!-- <form method='POST' enctype='multipart/form-data'>
+        {{ fractionform.hidden_tag() }}
+        {{ fractionform.csrf_token }}
+        
+        <div>
+            {{ fractionform.submit }}
+        </div>
+    </form> -->
+
     <form method='POST' enctype='multipart/form-data'>
         {{ uploadform.hidden_tag() }}
         {{ uploadform.csrf_token }}
+        
+        <div>
+            {{ fractionform.slider.label }} {{ fractionform.slider() }}
+            <span id="fractionValue" style="margin-left: 10px;">0.1</span>
+        </div>
+        
         <div>
             {{ uploadform.folder.label }} {{ uploadform.folder }}
         </div>
         <div>
         {{ uploadform.upload }}
         </div>
+    
     </form>
 
     <form method='POST' enctype='multipart/form-data'>
@@ -70,6 +87,14 @@
     <div id="plot-info"></div>
 
     <script type="text/javascript">
+            const fraction = document.querySelector('#{{ fractionform.slider.id }}');
+            const display = document.getElementById('fractionValue');
+            display.textContent = fraction.value
+
+            fraction.oninput = function() {
+            display.textContent = this.value;
+        }
+
             var graph = {{graphJSON | safe}};
             Plotly.newPlot('graph', graph,{});
 
@@ -106,7 +131,8 @@
 
                         const panzoom = Panzoom(frameImage, {
                             minScale: 1,
-                            maxScale: 10
+                            maxScale: 10,
+                            //contain: 'inside'
                         });
 
                         frameContainer.addEventListener('wheel', function(event) {
