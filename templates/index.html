@@ -39,36 +39,55 @@
             transform: scale(1) translate(0px, 0px);
             cursor: grab;
         }
+        .small-input-box input {
+            width: 50px; /* Adjust the width as needed */
+        }
     </style>
 </head>
 <body>
     <h1>Explore Pose Embeddings</h1>
 
-    <!-- <form method='POST' enctype='multipart/form-data'>
-        {{ fractionform.hidden_tag() }}
-        {{ fractionform.csrf_token }}
-        
-        <div>
-            {{ fractionform.submit }}
-        </div>
-    </form> -->
-
     <form method='POST' enctype='multipart/form-data'>
         {{ uploadform.hidden_tag() }}
         {{ uploadform.csrf_token }}
-        
+       
+        <div>
+            {{ uploadform.folder.label }} {{ uploadform.folder }}
+        </div>
+
         <div>
             {{ fractionform.slider.label }} {{ fractionform.slider() }}
             <span id="fractionValue" style="margin-left: 10px;">0.1</span>
         </div>
         
         <div>
-            {{ uploadform.folder.label }} {{ uploadform.folder }}
+            {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist() }} 
         </div>
+
+        <div>
+            {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max() }} 
+        </div>
+
+        <div>
+            {{ keypointform.keypoints.label }} {{ keypointform.keypoints() }} 
+        </div>
+
         <div>
         {{ uploadform.upload }}
         </div>
-    
+
     </form>
 
     <form method='POST' enctype='multipart/form-data'>

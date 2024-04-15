@@ -59,7 +59,7 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
     
     return plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath
 
-def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered):
+def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints):
     if not os.path.isdir(os.path.join(folder_path,'clusters')):
         os.mkdir(os.path.join(folder_path,'clusters'))
     if not os.path.isdir(os.path.join(folder_path,'plots')):
@@ -95,12 +95,7 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
 
                 frame_number = sampled_frame_number_filtered[index]
                 frame_mapping = sampled_frame_mapping_filtered[index]
-                keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mapping))][0]
-            
-                x = keypoint_data[1::3]
-                y = keypoint_data[2::3]
-
-                xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                
                 try:
                     xy = [(int(float(x)), int(float(y))) for x, y in xy]
                 except:
@@ -109,9 +104,16 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
                 
                 mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
                 ret, frame = mp4.read()
+                
+                if keypoints: 
+                    keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mapping))][0]
+                
+                    x = keypoint_data[1::3]
+                    y = keypoint_data[2::3]
 
-                for point in xy: 
-                    cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
+                    xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                    for point in xy: 
+                        cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
             
                 cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping)+".png"),frame)
                 
