@@ -39,8 +39,16 @@
             transform: scale(1) translate(0px, 0px);
             cursor: grab;
         }
-        .small-input-box input {
-            width: 50px; /* Adjust the width as needed */
+        .small-input-box {
+            width: 40px; /* Adjust the width as needed */
+        }
+
+        .path-input-box {
+            width: 500px; /* Adjust the width as needed */
+        }
+
+        .upload-button {
+            margin-top: 10px;  /* Adjust padding as needed */
         }
     </style>
 </head>
@@ -51,8 +59,8 @@
         {{ uploadform.hidden_tag() }}
         {{ uploadform.csrf_token }}
        
-        <div>
-            {{ uploadform.folder.label }} {{ uploadform.folder }}
+        <div> 
+            {{ uploadform.folder.label }} {{ uploadform.folder(class = 'path-input-box')}}
         </div>
 
         <div>
@@ -61,23 +69,23 @@
         </div>
         
         <div>
-            {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist() }} 
+            {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist(class = 'small-input-box') }} 
         </div>
 
         <div>
-            {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state() }} 
+            {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state(class = 'small-input-box') }} 
         </div>
 
         <div>
-            {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples() }} 
+            {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples(class = 'small-input-box') }} 
         </div>
 
         <div>
-            {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min() }} 
+            {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min(class = 'small-input-box') }} 
         </div>
 
         <div>
-            {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max() }} 
+            {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max(class = 'small-input-box') }} 
         </div>
 
         <div>
@@ -85,7 +93,7 @@
         </div>
 
         <div>
-        {{ uploadform.upload }}
+        {{ uploadform.upload(class = 'upload-button') }}
         </div>
 
     </form>
@@ -94,7 +102,7 @@
         {{ clusterform.hidden_tag() }}
         {{ clusterform.csrf_token }}
         <div>
-            {{ clusterform.cluster }} 
+            {{ clusterform.cluster(class = 'upload-button') }} 
         </div>
     </form>
 
@@ -114,7 +122,30 @@
             display.textContent = this.value;
         }
 
-            var graph = {{graphJSON | safe}};
+        const minField = document.getElementById('{{ parameterform.hdbscan_eps_min.id }}');
+        const maxField = document.getElementById('{{ parameterform.hdbscan_eps_max.id }}');
+
+        // Function to update constraints
+        function updateConstraints() {
+            const minValue = parseFloat(minField.value); // Get the current value of hdbscan_eps_min
+            const maxValue = parseFloat(maxField.value); // Get the current value of hdbscan_eps_max
+
+            // Set the min attribute of hdbscan_eps_max to ensure it's not less than hdbscan_eps_min
+            maxField.min = minValue;
+
+            // If the current max is less than the new min, adjust it to match the min
+            if (maxValue < minValue) {
+                maxField.value = minValue;
+            }
+        }
+
+        // Attach event listeners to both fields
+        [minField, maxField].forEach(field => field.addEventListener('input', updateConstraints));
+
+        // Initial constraint update on page load
+        updateConstraints();
+            
+        var graph = {{graphJSON | safe}};
             Plotly.newPlot('graph', graph,{});
 
             var plotDiv = document.getElementById('graph');

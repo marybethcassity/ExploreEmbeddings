@@ -52,13 +52,13 @@ def adp_filt(currdf: object, pose):
     for i in range(data_lh.shape[1]):
         perc_rect.append(0)
     for x in tqdm(range(data_lh.shape[1])):
-        a, b = np.histogram(data_lh[1:, x].astype(np.float))
+        a, b = np.histogram(data_lh[1:, x].astype(float))
         rise_a = np.where(np.diff(a) >= 0)
         if rise_a[0][0] > 1:
             llh = b[rise_a[0][0]]
         else:
             llh = b[rise_a[0][1]]
-        data_lh_float = data_lh[:, x].astype(np.float)
+        data_lh_float = data_lh[:, x].astype(float)
         perc_rect[x] = np.sum(data_lh_float < llh) / data_lh.shape[0]
         currdf_filt[0, (2 * x):(2 * x + 2)] = np.hstack([datax[0, x], datay[0, x]])
         for i in range(1, data_lh.shape[0]):
@@ -67,7 +67,7 @@ def adp_filt(currdf: object, pose):
             else:
                 currdf_filt[i, (2 * x):(2 * x + 2)] = np.hstack([datax[i, x], datay[i, x]])
     currdf_filt = np.array(currdf_filt)
-    currdf_filt = currdf_filt.astype(np.float)
+    currdf_filt = currdf_filt.astype(float)
     return currdf_filt, perc_rect
 
 # bsoid_app/bsoid_utilities/load_workspace.py
@@ -84,7 +84,7 @@ def compute(processed_input_data, file_j_df_array, framerate):
         #try:
         #    [features, scaled_features] = load_feats(working_dir, prefix)
         #except:
-        window = np.int(np.round(0.05 / (1 / framerate)) * 2 - 1)
+        window = int(np.round(0.05 / (1 / framerate)) * 2 - 1)
         f = []
         my_bar = st.progress(0)
         for n in range(len(processed_input_data)):

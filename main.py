@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session 
 from flask_wtf import FlaskForm
 from wtforms import FloatField, SubmitField, StringField, HiddenField, BooleanField, IntegerField, Field
-from wtforms.widgets import Input
+from wtforms.widgets import Input, NumberInput
 import webbrowser
 import threading
 from flask_sqlalchemy import SQLAlchemy
@@ -63,38 +63,9 @@ class FractionWidget(Input):
         kwargs.setdefault('max', 1)
         kwargs.setdefault('step', 0.05)  # Adjust step as needed
         return super(FractionWidget, self).__call__(field, **kwargs)
-    
-# class ClusterSizeWidget:
-#     def __call__(self, field, **kwargs):
-#         kwargs.setdefault('type', 'range')
-#         kwargs.setdefault('min', field.min)
-#         kwargs.setdefault('max', field.max)
-#         kwargs.setdefault('step', field.step)
-#         # The value will not be directly set here because HTML does not support ranges as values directly
-#         return HTMLString(f'<input {html_params(name=field.name, **kwargs)}>' 
-#                           f'<input {html_params(name=field.name, **kwargs)}>')
-    
-# class RangeSliderField(Field):
-#     widget = ClusterSizeWidget()
-
-#     def __init__(self, label=None, validators=None, min=0, max=100, step=1, **kwargs):
-#         super(RangeSliderField, self).__init__(label, validators, **kwargs)
-#         self.min = min
-#         self.max = max
-#         self.step = step
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
-
-# class UMAPForm(FlaskForm):
-#     action = HiddenField(default='upload')
-#     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
-#     upload = SubmitField('Step 1: Generate UMAP Embedding')    
-
-# class HDBSCANForm(FlaskForm):
-#     action = HiddenField(default='upload')
-#     folder = FloatField('Provide the path to the folder containing the csv and mp4 files:')
-#     upload = SubmitField('Step 1: Generate UMAP Embedding')
     
 class UploadForm(FlaskForm):
     action = HiddenField(default='upload')
@@ -111,14 +82,11 @@ class KeypointForm(FlaskForm):
 
 class ParameterForm(FlaskForm):
     action = HiddenField(default='parameters')
-    umap_min_dist = FloatField('Set the UMAP min distance:', default=0.0, description="The effective minimum distance between embedded points.")
-    umap_random_state = IntegerField('Set the UMAP random state:', default=42, description="The random state to ensure reproducibility (default is 42).")
-    hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples:', default=1, description="The number of samples in a neighborhood for a point to be considered as a core point.")
-    hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon:', default=0.5, description="The minimum radius in which neighboring points will be considered part of the cluster.")
-    hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon:', default=1.0, description="The maximum radius in which neighboring points will be considered part of the cluster.")
-
-# class ClusterSizeForm(FlaskForm):
-#     range_slider = RangeSliderField('Set the range of the minimum cluster size within the range of 0.02 to 1:', min=0.02, max=5.00, step=0.02)
+    umap_min_dist = FloatField('Set the UMAP min distance:', default=0.0, widget=NumberInput(step=0.1, min = 0))
+    umap_random_state = IntegerField('Set the UMAP random state:', default=42, widget=NumberInput(step=1))
+    hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples:', default=1, widget=NumberInput(step=1, min = 0))
+    hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon:', default=0.5, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon:', default=1.0, widget=NumberInput(step=0.1, min = 0))
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
@@ -141,10 +109,9 @@ def process_click_data():
                 mp4filepath = session_data.mp4_path
                 keypoints = session_data.keypoints
 
-        #csvfilepath = session.get('csv')
         file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
         file_j_df_array = np.array(file_j_df)
-        #mp4filepath = session.get('mp4')
+
         if mp4filepath is not None:
             mp4 = cv2.VideoCapture(mp4filepath)
             mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
@@ -188,7 +155,6 @@ def home():
     fractionform = FractionForm()
     keypointform = KeypointForm()
     parameterform = ParameterForm()
-    #clustersizeform = ClusterSizeForm()
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         db.session.query(SessionData).delete()
@@ -218,13 +184,6 @@ def home():
 
         plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction)
 
-        #session['csv'] = csvfilepath
-        #session['mp4'] = mp4filepath
-        #session['assignments_filtered'] = assignments_filtered.tolist()
-        #session['sampled_frame_number_filtered'] = sampled_frame_number_filtered.tolist()
-        #session['sampled_frame_mapping_filtered'] = sampled_frame_mapping_filtered.tolist()
-        ##session['plot'] = plot
-
         session_data = SessionData(
             folder_path=folder_path,
             csv_path=csvfilepath,
@@ -242,13 +201,6 @@ def home():
 
         
     if clusterform.validate_on_submit() and clusterform.cluster.data:
-        
-        #csvfilepath = session.get('csv')
-        #mp4filepath = session.get('mp4')
-        #folder_path = session.get('folder_path')
-        #assignments_filtered = session.get('assignments_filtered')
-        #sampled_frame_number_filtered = session.get('sampled_frame_number_filtered')
-        #sampled_frame_mapping_filtered = session.get('sampled_frame_mapping_filtered')
 
         session_data_id = session.get('session_data_id')
 

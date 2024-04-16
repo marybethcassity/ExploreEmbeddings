@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.4.1/dist/panzoom.min.js"></script>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-around; /* Adjust the layout as needed */
+            align-items: center;
+        }
+
+        #graph {
+            flex: 1; /* Allows each child to grow equally */
+            width: 3840/2px; /* Adjust the width as needed */   
+            height: 2160/2px;
+        }
+
+        #frame-container {
+            flex: 1; /* Allows each child to grow equally */
+            max-width: 50%; /* Adjust the width as needed */
+            float: right;
+            position: relative;
+            overflow: hidden;  
+            align-items: center;      
+            justify-content: center; 
+        }
+        
+        #frame-container img {
+            max-width: 100%; /* Ensures the image fits within the container */
+            height: auto; /* Keeps the image aspect ratio */
+            flex: none;  
+            transform-origin: 50% 50%;
+            transform: scale(1) translate(0px, 0px);
+            cursor: grab;
+        }
+        .small-input-box input {
+            width: 50px; /* Adjust the width as needed */
+        }
+    </style>
+</head>
+<body>
+    <h1>Explore Pose Embeddings</h1>
+
+    <form method='POST' enctype='multipart/form-data'>
+        {{ uploadform.hidden_tag() }}
+        {{ uploadform.csrf_token }}
+       
+        <div>
+            {{ uploadform.folder.label }} {{ uploadform.folder }}
+        </div>
+
+        <div>
+            {{ fractionform.slider.label }} {{ fractionform.slider() }}
+            <span id="fractionValue" style="margin-left: 10px;">0.1</span>
+        </div>
+        
+        <div>
+            {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist() }} 
+        </div>
+
+        <div>
+            {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min() }} 
+        </div>
+
+        <div>
+            {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max() }} 
+        </div>
+
+        <div>
+            {{ keypointform.keypoints.label }} {{ keypointform.keypoints() }} 
+        </div>
+
+        <div>
+        {{ uploadform.upload }}
+        </div>
+
+    </form>
+
+    <form method='POST' enctype='multipart/form-data'>
+        {{ clusterform.hidden_tag() }}
+        {{ clusterform.csrf_token }}
+        <div>
+            {{ clusterform.cluster }} 
+        </div>
+    </form>
+
+    <div class="container">
+        <div id="graph"></div>
+        <div id="frame-container"><div id="img"></div></div>
+    </div>
+    
+    <div id="plot-info"></div>
+
+    <script type="text/javascript">
+            const fraction = document.querySelector('#{{ fractionform.slider.id }}');
+            const display = document.getElementById('fractionValue');
+            display.textContent = fraction.value
+
+            fraction.oninput = function() {
+            display.textContent = this.value;
+        }
+
+            var graph = {{graphJSON | safe}};
+            Plotly.newPlot('graph', graph,{});
+
+            var plotDiv = document.getElementById('graph');
+        plotDiv.on('plotly_click', function(data) {
+            var clickInfo = data.points.map(function(point) {
+                return {
+                    'x': point.x,
+                    'y': point.y,
+                    'z': point.z,
+                    'frame_mapping': point.customdata[0],
+                    'frame_number': point.customdata[1],
+                    'assignment': point.customdata[2]
+                };
+            });
+
+            $.ajax({
+                url: '/process_click_data',
+                type: 'POST',
+                data: JSON.stringify(clickInfo),
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log('Click data sent successfully:', response);
+
+                    if (response.frame_data) {
+                        // Create an image element and set its src attribute with the frame data
+                        var frameContainer = document.getElementById('frame-container');
+                        frameContainer.innerHTML = '';
+                        var frameImage = document.createElement('img');
+                        frameImage.src = 'data:image/jpeg;base64,' + response.frame_data;
+                        frameImage.width = 3840/2; 
+                        frameImage.height = 2160/2;
+                        frameContainer.appendChild(frameImage);
+
+                        const panzoom = Panzoom(frameImage, {
+                            minScale: 1,
+                            maxScale: 10,
+                            //contain: 'inside'
+                        });
+
+                        frameContainer.addEventListener('wheel', function(event) {
+                            panzoom.zoomWithWheel(event);
+                        });
+                    
+                    } else {
+                        console.error(response.error);
+                    }
+
+                },
+                error: function(error) {
+                    console.error('Error sending click data:', error);
+                }
+            });
+
+            var infoDiv = document.getElementById('plot-info');
+            infoDiv.innerHTML = '';
+
+            clickInfo.forEach(function(info) {
+                var infoElement = document.createElement('p');
+                infoElement.textContent = 'x: ' + info.x.toFixed(3) + ', y: ' + info.y.toFixed(3) + ', z: ' + info.z.toFixed(3) +
+                                      ', mapped frame: ' + info.frame_mapping + ', mp4 frame: ' + info.frame_number + ', assignment: ' + info.assignment;
+                infoDiv.appendChild(infoElement);
+            }); 
+            
+        });
+    </script>
+</body>
+</html>
