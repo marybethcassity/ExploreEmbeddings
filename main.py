@@ -72,9 +72,13 @@ class UploadForm(FlaskForm):
     folder = StringField('Provide the path to the folder containing the csv and mp4 files:')
     upload = SubmitField('Step 1: Generate UMAP Embedding')
 
+class PlotlyForm(FlaskForm):
+    action = HiddenField(default='upload')
+    load_plot = BooleanField('Load plotly embedding if previously generated?', default=True)
+
 class FractionForm(FlaskForm):
     action = HiddenField(default='adjust')
-    slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', widget=FractionWidget())
+    slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', default=1, widget=FractionWidget())
 
 class KeypointForm(FlaskForm):
     action = HiddenField(default='upload')
@@ -83,7 +87,7 @@ class KeypointForm(FlaskForm):
 class ParameterForm(FlaskForm):
     action = HiddenField(default='parameters')
     umap_min_dist = FloatField('Set the UMAP min distance:', default=0.0, widget=NumberInput(step=0.1, min = 0))
-    umap_random_state = IntegerField('Set the UMAP random state:', default=42, widget=NumberInput(step=1))
+    umap_random_state = IntegerField('Set the UMAP random seed:', default=42, widget=NumberInput(step=1))
     hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples:', default=1, widget=NumberInput(step=1, min = 0))
     hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon:', default=0.5, widget=NumberInput(step=0.1, min = 0))
     hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon:', default=1.0, widget=NumberInput(step=0.1, min = 0))
@@ -155,6 +159,7 @@ def home():
     fractionform = FractionForm()
     keypointform = KeypointForm()
     parameterform = ParameterForm()
+    plotlyform = PlotlyForm()
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         db.session.query(SessionData).delete()
@@ -168,6 +173,7 @@ def home():
         minsamples=parameterform.hdbscan_min_samples.data
         min_eps = parameterform.hdbscan_eps_min.data
         max_eps = parameterform.hdbscan_eps_max.data
+        load_plot = plotlyform.load_plot.data
 
         session['folder_path'] = folder_path
 
@@ -181,8 +187,8 @@ def home():
         }
 
         cluster_range = [min_eps, max_eps]
-
-        plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction)
+        
+        plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, load_plot)
 
         session_data = SessionData(
             folder_path=folder_path,
@@ -217,7 +223,7 @@ def home():
         
         save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints)
     
-    return render_template('index.html', uploadform=uploadform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = plot)
+    return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = plot)
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()

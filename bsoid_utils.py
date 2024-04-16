@@ -291,6 +291,6 @@ def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampl
     "Frame: %{customdata[0]}"
     ]))
 
-    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    print(type(graphJSON))
-    return graphJSON
+    
+
+    return fig
