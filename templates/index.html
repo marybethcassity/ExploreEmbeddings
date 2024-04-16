@@ -64,32 +64,34 @@
         </div>
 
         <div> 
-            {{ plotlyform.load_plot.label }} {{ plotlyform.load_plot}}
+            {{ plotlyform.load_plot.label }} <input type="checkbox" id="loadPlotCheckbox" name="load_plot" onchange="toggleVisibility()" checked>
         </div>
 
-        <div>
-            {{ fractionform.slider.label }} {{ fractionform.slider() }}
-            <span id="fractionValue" style="margin-left: 10px;">0.1</span>
-        </div>
+        <div id="additionalOptions" style="display:none;">
+            <div>
+                {{ fractionform.slider.label }} {{ fractionform.slider() }}
+                <span id="fractionValue" style="margin-left: 10px;">0.1</span>
+            </div>
+            
+            <div>
+                {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist(class = 'small-input-box') }} 
+            </div>
         
-        <div>
-            {{ parameterform.umap_min_dist.label }} {{ parameterform.umap_min_dist(class = 'small-input-box') }} 
-        </div>
-
-        <div>
-            {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state(class = 'small-input-box') }} 
-        </div>
-
-        <div>
-            {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples(class = 'small-input-box') }} 
-        </div>
-
-        <div>
-            {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min(class = 'small-input-box') }} 
-        </div>
-
-        <div>
-            {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max(class = 'small-input-box') }} 
+            <div>
+                {{ parameterform.umap_random_state.label }} {{ parameterform.umap_random_state(class = 'small-input-box') }} 
+            </div>
+        
+            <div>
+                {{ parameterform.hdbscan_min_samples.label }} {{ parameterform.hdbscan_min_samples(class = 'small-input-box') }} 
+            </div>
+        
+            <div>
+                {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min(class = 'small-input-box') }} 
+            </div>
+        
+            <div>
+                {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max(class = 'small-input-box') }} 
+            </div>
         </div>
 
         <div>
@@ -118,12 +120,30 @@
     <div id="plot-info"></div>
 
     <script type="text/javascript">
-            const fraction = document.querySelector('#{{ fractionform.slider.id }}');
-            const display = document.getElementById('fractionValue');
-            display.textContent = fraction.value
 
-            fraction.oninput = function() {
-            display.textContent = this.value;
+        function toggleVisibility() {
+                var checkbox = document.getElementById('loadPlotCheckbox');
+                var additionalOptions = document.getElementById('additionalOptions');
+                
+                // Toggle display based on whether the checkbox is checked
+                if (checkbox.checked) {
+                    additionalOptions.style.display = 'none'; // Hide when checked
+                } else {
+                    additionalOptions.style.display = 'block'; // Show when not checked
+                }
+            }
+
+            // Call the function on page load to set the initial state
+            document.addEventListener('DOMContentLoaded', function() {
+                toggleVisibility(); // Ensure correct initial visibility based on the checked state
+            });
+
+        const fraction = document.querySelector('#{{ fractionform.slider.id }}');
+        const display = document.getElementById('fractionValue');
+        display.textContent = fraction.value
+
+        fraction.oninput = function() {
+        display.textContent = this.value;
         }
 
         const minField = document.getElementById('{{ parameterform.hdbscan_eps_min.id }}');
