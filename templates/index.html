@@ -47,6 +47,10 @@
             width: 500px; /* Adjust the width as needed */
         }
 
+        .name-input-box {
+            width: 250px; /* Adjust the width as needed */
+        }
+
         .upload-button {
             margin-top: 10px;  /* Adjust padding as needed */
         }
@@ -64,10 +68,19 @@
         </div>
 
         <div> 
-            {{ plotlyform.load_plot.label }} <input type="checkbox" id="loadPlotCheckbox" name="load_plot" onchange="toggleVisibility()" checked>
+            {{ plotlyform.load_plot.label }} 
+            <input type="checkbox" id="loadPlotCheckbox" name="load_plot" onchange="toggleVisibility()" checked>
         </div>
 
         <div id="additionalOptions" style="display:none;">
+            <div> 
+                {{ nameform.name.label }} {{ nameform.name(class = 'name-input-box')}}
+            </div>
+
+            <div>
+                {{ parameterform.fps.label }} {{ parameterform.fps(class = 'small-input-box') }} 
+            </div>
+            
             <div>
                 {{ fractionform.slider.label }} {{ fractionform.slider() }}
                 <span id="fractionValue" style="margin-left: 10px;">0.1</span>
@@ -99,7 +112,8 @@
         </div>
 
         <div>
-        {{ uploadform.upload(class = 'upload-button') }}
+            {{ uploadform.upload(class = 'upload-button', onclick='buttonClicked()')}}
+            <input type="hidden" id="buttonPressed" value="false">
         </div>
 
     </form>
@@ -121,22 +135,45 @@
 
     <script type="text/javascript">
 
-        function toggleVisibility() {
-                var checkbox = document.getElementById('loadPlotCheckbox');
-                var additionalOptions = document.getElementById('additionalOptions');
-                
-                // Toggle display based on whether the checkbox is checked
-                if (checkbox.checked) {
-                    additionalOptions.style.display = 'none'; // Hide when checked
-                } else {
-                    additionalOptions.style.display = 'block'; // Show when not checked
-                }
+        // Call the function on page load to set the initial state
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check the stored state from session storage on page load
+            if (sessionStorage.getItem('isVisible') === 'true') {
+                document.getElementById('additionalOptions').style.display = 'block';
+            } else {
+                document.getElementById('additionalOptions').style.display = 'none';
             }
+        });
+        
+        function buttonClicked(event) {
+            // Optionally prevent the default if you want to handle the form submission via JavaScript
+            // event.preventDefault(); 
 
-            // Call the function on page load to set the initial state
-            document.addEventListener('DOMContentLoaded', function() {
-                toggleVisibility(); // Ensure correct initial visibility based on the checked state
-            });
+            // Set a flag in session storage to indicate the button was pressed
+            sessionStorage.setItem('buttonPressed', 'true');
+            document.getElementById('buttonPressed').value = "true";
+            toggleVisibility();
+            
+            // You can submit the form programmatically here if needed
+            // document.getElementById('yourFormId').submit();
+        }
+
+        function toggleVisibility() {
+        var checkbox = document.getElementById('loadPlotCheckbox');
+        var buttonPressed = document.getElementById('buttonPressed').value === "true";
+
+        if (!checkbox.checked || buttonPressed) {
+            document.getElementById('additionalOptions').style.display = 'block';
+            sessionStorage.setItem('isVisible', 'true'); // Store visibility state
+        } else {
+            document.getElementById('additionalOptions').style.display = 'none';
+            sessionStorage.setItem('isVisible', 'false'); // Store visibility state
+        }
+
+        // Reset button pressed state so it only affects visibility once per click
+        document.getElementById('buttonPressed').value = "false";
+        sessionStorage.setItem('buttonPressed', 'false'); // Reset in session storage as well
+    }
 
         const fraction = document.querySelector('#{{ fractionform.slider.id }}');
         const display = document.getElementById('fractionValue');

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session 
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for 
 from flask_wtf import FlaskForm
 from wtforms import FloatField, SubmitField, StringField, HiddenField, BooleanField, IntegerField, Field
 from wtforms.widgets import Input, NumberInput
@@ -15,12 +15,11 @@ import pandas as pd
 import numpy as np
 import cv2
 import os
+import shutil
 
 import base64
 
-from tasks import return_plot, save_images
-
-fps = 30     
+from tasks import return_plot, save_images  
 
 app = Flask(__name__)
 SECRET_KEY = os.urandom(32)
@@ -48,7 +47,8 @@ class SessionData(db.Model):
     assignments_filtered = db.Column(db.PickleType)
     sampled_frame_number_filtered = db.Column(db.PickleType)
     sampled_frame_mapping_filtered = db.Column(db.PickleType)
-    keypoints = db.Column(db.Boolean) 
+    keypoints = db.Column(db.Boolean)
+    name = db.Column(db.String(500))
 
 with app.app_context():
     db.create_all()
@@ -76,6 +76,10 @@ class PlotlyForm(FlaskForm):
     action = HiddenField(default='upload')
     load_plot = BooleanField('Load plotly embedding if previously generated?', default=True)
 
+class NameForm(FlaskForm):
+    action = HiddenField(default='upload')
+    name = StringField('What do you want to name this plot?:')
+
 class FractionForm(FlaskForm):
     action = HiddenField(default='adjust')
     slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', default=1, widget=FractionWidget())
@@ -86,6 +90,7 @@ class KeypointForm(FlaskForm):
 
 class ParameterForm(FlaskForm):
     action = HiddenField(default='parameters')
+    fps = IntegerField('Set the fps:', default=30, widget=NumberInput(step=1))
     umap_min_dist = FloatField('Set the UMAP min distance:', default=0.0, widget=NumberInput(step=0.1, min = 0))
     umap_random_state = IntegerField('Set the UMAP random seed:', default=42, widget=NumberInput(step=1))
     hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples:', default=1, widget=NumberInput(step=1, min = 0))
@@ -151,44 +156,98 @@ def process_click_data():
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])
 def home():
-    plot = None
+    graphJSON = None
     folder_path = None
     file_j_df = None
     uploadform = UploadForm()
     clusterform = ClusterForm()
     fractionform = FractionForm()
     keypointform = KeypointForm()
-    parameterform = ParameterForm()
     plotlyform = PlotlyForm()
+    parameterform = ParameterForm()
+    nameform = NameForm()
+    form_submitted = False
+
+    # if 'parameters' in session:
+    #     form_data = session['parameterform']
+    #     parameterform.fps.data = form_data.get('fps')
+    #     parameterform.umap_min_dist.data = form_data.get('umap_min_dist')
+    #     parameterform.umap_random_state.data = form_data.get('umap_random_state')
+    #     parameterform.hdbscan_min_samples.data = form_data.get('hdbscan_min_samples')
+    #     parameterform.hdbscan_eps_min.data = form_data.get('hdbscan_eps_min')
+    #     parameterform.hdbscan_eps_max.data = form_data.get('hdbscan_eps_max')
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
+        
         db.session.query(SessionData).delete()
         db.session.commit()
 
         folder_path = uploadform.folder.data
         training_fraction = fractionform.slider.data
         keypoints = keypointform.keypoints.data
-        mindist = parameterform.umap_min_dist.data
-        randomstate = parameterform.umap_random_state.data
-        minsamples=parameterform.hdbscan_min_samples.data
-        min_eps = parameterform.hdbscan_eps_min.data
-        max_eps = parameterform.hdbscan_eps_max.data
         load_plot = plotlyform.load_plot.data
 
-        session['folder_path'] = folder_path
+        if load_plot: 
+            
+            parameterform = ParameterForm(formdata=None)
+    
+            for filename in os.listdir(folder_path):
+                if filename.endswith('.mp4'):
+                    mp4filepath = os.path.join('uploads', 'videos', filename)
+                    shutil.copyfile(os.path.join(folder_path,filename), mp4filepath)
 
-        UMAP_PARAMS = {
-            'min_dist': mindist,  
-            'random_state': randomstate,
-        }
+                elif filename.endswith('.csv'):
+                    csvfilepath = os.path.join('uploads', 'csvs', filename)
+                    csvfilename = filename
+                    shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
+                    file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+            
+            for filename in os.listdir(os.path.join(folder_path, 'plots')):
+                if filename.endswith('.json'):
+                    with open(os.path.join(folder_path,'plots',filename), 'r', encoding='utf-8') as f:
+                        graphJSON = f.read()
 
-        HDBSCAN_PARAMS = {
-            'min_samples': minsamples,
-        }
+                elif filename.endswith('.csv'):
+                    data = pd.read_csv(os.path.join(folder_path,'plots',filename))
+                    sampled_frame_mapping_filtered = data["mapping"]
+                    sampled_frame_number_filtered = data["frame_number"]
+                    assignments_filtered = data["assignments"]
+                    fps = data["fps"][0]
+                    UMAP_min = data["UMAP_min"][0]
+                    UMAP_seed = data["UMAP_seed"][0]
+                    HDBSCAN_samples = data["HDBSCAN_samples"][0]
+                    HDBSCAN_min = data["HDBSCAN_min"][0]
+                    HDBSCAN_max = data["HDBSCAN_max"][0]
 
-        cluster_range = [min_eps, max_eps]
-        
-        plot, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, load_plot)
+                    parameterform.fps.data = fps
+                    parameterform.umap_min_dist.data = UMAP_min
+                    parameterform.umap_random_state.data = UMAP_seed
+                    parameterform.hdbscan_min_samples.data = HDBSCAN_samples
+                    parameterform.hdbscan_eps_min.data = HDBSCAN_min
+                    parameterform.hdbscan_eps_max.data = HDBSCAN_max
+
+        else: 
+            
+            fps = parameterform.fps.data
+            mindist = parameterform.umap_min_dist.data
+            randomstate = parameterform.umap_random_state.data
+            minsamples=parameterform.hdbscan_min_samples.data
+            min_eps = parameterform.hdbscan_eps_min.data
+            max_eps = parameterform.hdbscan_eps_max.data
+            name = nameform.name.data
+
+            UMAP_PARAMS = {
+                'min_dist': mindist,  
+                'random_state': randomstate,
+            }
+
+            HDBSCAN_PARAMS = {
+                'min_samples': minsamples,
+            }
+
+            cluster_range = [min_eps, max_eps]
+            
+            graphJSON, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
         session_data = SessionData(
             folder_path=folder_path,
@@ -197,14 +256,14 @@ def home():
             assignments_filtered=assignments_filtered,
             sampled_frame_number_filtered=sampled_frame_number_filtered,
             sampled_frame_mapping_filtered=sampled_frame_mapping_filtered,
-            keypoints=keypoints
+            keypoints=keypoints,
+            name = name
         )
 
         db.session.add(session_data)
         db.session.commit()
 
         session['session_data_id'] = session_data.id
-
         
     if clusterform.validate_on_submit() and clusterform.cluster.data:
 
@@ -219,11 +278,12 @@ def home():
                 assignments_filtered = session_data.assignments_filtered
                 sampled_frame_number_filtered = session_data.sampled_frame_number_filtered
                 sampled_frame_mapping_filtered = session_data.sampled_frame_mapping_filtered
-                keypoints=keypoints
+                keypoints = session_data.keypoints
+                name = session_data.name
         
-        save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints)
+        save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints, name)
     
-    return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = plot)
+    return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = graphJSON, nameform=nameform)
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()

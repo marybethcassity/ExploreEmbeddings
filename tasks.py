@@ -10,16 +10,14 @@ import json
 
 from bsoid_utils import *
 
-def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, load_plot):
+
+def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name):
     if not os.path.isdir('uploads'):
         os.mkdir('uploads')
     if not os.path.isdir(os.path.join('uploads', 'csvs')):
         os.mkdir(os.path.join('uploads', 'csvs'))
     if not os.path.isdir(os.path.join('uploads', 'videos')):
         os.mkdir(os.path.join('uploads', 'videos'))
-
-    graphJSON = False
-    sampled_frame_number_filtered = False
 
     for filename in os.listdir(folder_path):
         if filename.endswith('.mp4'):
@@ -30,68 +28,67 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
             csvfilepath = os.path.join('uploads', 'csvs', filename)
             csvfilename = filename
             shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
-            file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+            file_j_df = pd.read_csv(csvfilepath, low_memory=False)                     
 
-        elif filename.endswith('.json'):
-            with open(os.path.join(folder_path,filename), 'r', encoding='utf-8') as f:
-                graphJSON = f.read()
+    pose_chosen = []
 
-        elif filename.endswith('.npz'):
-            data = np.load(os.path.join(folder_path,filename))
-            sampled_frame_mapping_filtered = data["mapping"]
-            sampled_frame_number_filtered = data["frame_number"]
-            assignments_filtered = data["assignments"]
-            data.close()
+    file_j_df_array = np.array(file_j_df)
 
-    if graphJSON and sampled_frame_number_filtered.any() and load_plot:
-        print("Loading saved plotly embedding :))")
-    else:
-        pose_chosen = []
+    p = st.multiselect('Identified __pose__ to include:', [*file_j_df_array[0, 1:-1:3]], [*file_j_df_array[0, 1:-1:3]])
+    for a in p:
+        index = [i for i, s in enumerate(file_j_df_array[0, 1:]) if a in s]
+        if not index in pose_chosen:
+            pose_chosen += index
+    pose_chosen.sort()
 
-        file_j_df_array = np.array(file_j_df)
+    file_j_processed, p_sub_threshold = adp_filt(file_j_df, pose_chosen)
+    file_j_processed = file_j_processed.reshape((1, file_j_processed.shape[0], file_j_processed.shape[1]))
 
-        p = st.multiselect('Identified __pose__ to include:', [*file_j_df_array[0, 1:-1:3]], [*file_j_df_array[0, 1:-1:3]])
-        for a in p:
-            index = [i for i, s in enumerate(file_j_df_array[0, 1:]) if a in s]
-            if not index in pose_chosen:
-                pose_chosen += index
-        pose_chosen.sort()
+    scaled_features, features, frame_mapping, frame_number = compute(file_j_processed, file_j_df_array, fps)
 
-        file_j_processed, p_sub_threshold = adp_filt(file_j_df, pose_chosen)
-        file_j_processed = file_j_processed.reshape((1, file_j_processed.shape[0], file_j_processed.shape[1]))
+    train_size = subsample(file_j_processed, fps, training_fraction)
 
-        scaled_features, features, frame_mapping, frame_number = compute(file_j_processed, file_j_df_array, fps)
+    sampled_embeddings, sampled_frame_mapping, sampled_frame_number = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number)
 
-        train_size = subsample(file_j_processed, fps, training_fraction)
+    assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
 
-        sampled_embeddings, sampled_frame_mapping, sampled_frame_number = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number)
+    sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
+    assignments_filtered = assignments[assignments>=0]    
+    sampled_frame_mapping_filtered = sampled_frame_mapping[assignments>=0] 
+    sampled_frame_number_filtered =  sampled_frame_number[assignments>=0] 
 
-        assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
+    data = { 
+        "mapping": sampled_frame_mapping_filtered, 
+        "frame_number":  sampled_frame_number_filtered,
+        "assignments":  assignments_filtered,
+        "fps" : fps,
+        "fraction" : training_fraction,
+        "UMAP_min" : UMAP_PARAMS['min_dist'],
+        "UMAP_seed" : UMAP_PARAMS['random_state'],
+        "HDBSCAN_samples" : HDBSCAN_PARAMS['min_samples'],
+        "HDBSCAN_min" : cluster_range[0],
+        "HDBSCAN_max" : cluster_range[1]}
+    
+    df = pd.DataFrame(data)
+    
+    if not os.path.isdir(os.path.join(folder_path, name)):
+        os.mkdir(os.path.join(folder_path, name))
 
-        sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
-        assignments_filtered = assignments[assignments>=0]    
-        sampled_frame_mapping_filtered = sampled_frame_mapping[assignments>=0] 
-        sampled_frame_number_filtered =  sampled_frame_number[assignments>=0] 
+    df.to_csv(os.path.join(folder_path, name, "data.csv"), index=False) 
 
-        np.savez(os.path.join(folder_path,"framemapping.npz"), 
-            mapping = sampled_frame_mapping_filtered, 
-            frame_number = sampled_frame_number_filtered,
-            assignments = assignments_filtered)
+    plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, csvfilename, sampled_frame_mapping_filtered, sampled_frame_number_filtered)
 
-        plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, csvfilename, sampled_frame_mapping_filtered, sampled_frame_number_filtered)
-        #plot.write_html(os.path.join(folder_path,"plot.html"), include_plotlyjs='cdn')
-
-        graphJSON = json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
-        with open(os.path.join(folder_path, 'plot.json'), 'w') as f:
-            f.write(graphJSON)
+    graphJSON = json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
+    with open(os.path.join(folder_path, name,'plot.json'), 'w') as f:
+        f.write(graphJSON)
 
     return graphJSON, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath
 
-def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints):
-    if not os.path.isdir(os.path.join(folder_path,'clusters')):
-        os.mkdir(os.path.join(folder_path,'clusters'))
-    if not os.path.isdir(os.path.join(folder_path,'plots')):
-        os.mkdir(os.path.join(folder_path,'plots'))
+def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints, name):
+    if not os.path.isdir(os.path.join(folder_path, name, 'clusters')):
+        os.mkdir(os.path.join(folder_path, name,'clusters'))
+    if not os.path.isdir(os.path.join(folder_path, name,'histograms')):
+        os.mkdir(os.path.join(folder_path, name,'histograms'))
 
     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
     file_j_df_array = np.array(file_j_df)
@@ -99,8 +96,8 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
         
     clusters = np.unique(assignments_filtered)
     for cluster in clusters:
-        if not os.path.isdir(os.path.join(folder_path,'clusters',str(cluster))):
-            os.mkdir(os.path.join(folder_path,'clusters',str(cluster)))
+        if not os.path.isdir(os.path.join(folder_path, name,'clusters',str(cluster))):
+            os.mkdir(os.path.join(folder_path, name,'clusters',str(cluster)))
             
             indeces = np.where(assignments_filtered==cluster)[0]
 
@@ -116,7 +113,7 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
             plt.title(f'Cluster {cluster}')
             plt.xlabel('Frame Difference')
             plt.ylabel('Frequency')
-            plt.savefig(os.path.join(folder_path,'plots',str(cluster)+".png")) 
+            plt.savefig(os.path.join(folder_path, name,'histograms',str(cluster)+".png")) 
             plt.clf()
 
             for index in indeces:
@@ -140,7 +137,7 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
                     for point in xy: 
                         cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
             
-                cv2.imwrite(os.path.join(folder_path,'clusters',str(cluster),str(frame_mapping)+".png"),frame)
+                cv2.imwrite(os.path.join(folder_path, name, 'clusters',str(cluster),str(frame_mapping)+".png"),frame)
                 
     mp4.release()
 
