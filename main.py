@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for 
 from flask_wtf import FlaskForm
-from wtforms import FloatField, SubmitField, StringField, HiddenField, BooleanField, IntegerField, Field
+from wtforms import FloatField, SubmitField, StringField, HiddenField, BooleanField, IntegerField, Field, SelectField
 from wtforms.widgets import Input, NumberInput
 import webbrowser
 import threading
@@ -76,6 +76,10 @@ class PlotlyForm(FlaskForm):
     action = HiddenField(default='upload')
     load_plot = BooleanField('Load plotly embedding if previously generated?', default=True)
 
+class LoadNameForm(FlaskForm):
+    action = HiddenField(default='upload')
+    loadname = SelectField('Which plot do you want to open?')
+
 class NameForm(FlaskForm):
     action = HiddenField(default='upload')
     name = StringField('What do you want to name this plot?:')
@@ -100,6 +104,17 @@ class ParameterForm(FlaskForm):
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
     cluster = SubmitField('Step 2: Save images in clusters')
+
+@app.route('/get_folders', methods=['POST'])
+def get_folders():
+    data = request.get_json()
+    directory = data.get('path')
+
+    if os.path.exists(directory) and os.path.isdir(directory):
+        folders = [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory, name))]
+        return jsonify(folders)
+    else:
+        pass
 
 @app.route('/process_click_data', methods=['POST'])
 def process_click_data():
@@ -166,6 +181,7 @@ def home():
     plotlyform = PlotlyForm()
     parameterform = ParameterForm()
     nameform = NameForm()
+    loadnameform = LoadNameForm()
     form_submitted = False
 
     # if 'parameters' in session:
@@ -186,8 +202,14 @@ def home():
         training_fraction = fractionform.slider.data
         keypoints = keypointform.keypoints.data
         load_plot = plotlyform.load_plot.data
+        name = nameform.name.data
+        loadname = request.form.get('loadname')
 
+        print("Loadname: ", loadname)
+        print("Folderpath: ", folder_path)
+        
         if load_plot: 
+            print("loading plot")
             
             parameterform = ParameterForm(formdata=None)
     
@@ -202,13 +224,16 @@ def home():
                     shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
                     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
             
-            for filename in os.listdir(os.path.join(folder_path, 'plots')):
+            print(os.path.join(folder_path, loadname))
+            print(os.path.isdir(os.path.join(folder_path, loadname)))
+            
+            for filename in os.listdir(os.path.join(folder_path, loadname)):
                 if filename.endswith('.json'):
-                    with open(os.path.join(folder_path,'plots',filename), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(folder_path,loadname,filename), 'r', encoding='utf-8') as f:
                         graphJSON = f.read()
 
                 elif filename.endswith('.csv'):
-                    data = pd.read_csv(os.path.join(folder_path,'plots',filename))
+                    data = pd.read_csv(os.path.join(folder_path,loadname,filename))
                     sampled_frame_mapping_filtered = data["mapping"]
                     sampled_frame_number_filtered = data["frame_number"]
                     assignments_filtered = data["assignments"]
@@ -283,7 +308,7 @@ def home():
         
         save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints, name)
     
-    return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = graphJSON, nameform=nameform)
+    return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = graphJSON, nameform=nameform, loadnameform=loadnameform)
 
 if __name__ == '__main__':
     threading.Thread(target=open_browser).start()
