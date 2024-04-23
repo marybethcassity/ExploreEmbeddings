@@ -32,6 +32,11 @@ git clone https://github.com/marybethcassity/PoseEmbeddingsExplore.git
 cd /path/to/PoseEmbeddingsExplore
 ```
 
+For most people:
+```
+cd PoseEmbeddingsExplore
+```
+
 **Step 7:** Create the anaconda environment 
 ```
 conda env create --name embeddings -f requirements.yml 
