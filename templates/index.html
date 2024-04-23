@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
     <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.8.3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.4.1/dist/panzoom.min.js"></script>
     <style>
         .container {
@@ -219,6 +219,7 @@
         updateConstraints();
             
         var graph = {{graphJSON | safe}};
+            console.log(graph); 
             Plotly.newPlot('graph', graph,{});
 
             var plotDiv = document.getElementById('graph');

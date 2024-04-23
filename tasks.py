@@ -5,6 +5,7 @@ import shutil
 import matplotlib.pyplot as plt 
 import matplotlib
 import json
+import time
 
 #from celery import Celery
 
@@ -41,16 +42,35 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
             pose_chosen += index
     pose_chosen.sort()
 
+    time_start = time.time()
+
     file_j_processed, p_sub_threshold = adp_filt(file_j_df, pose_chosen)
+
+    time_adp_filt = time.time()-time_start
+
     file_j_processed = file_j_processed.reshape((1, file_j_processed.shape[0], file_j_processed.shape[1]))
+
+    time_start_2 = time.time()
 
     scaled_features, features, frame_mapping, frame_number = compute(file_j_processed, file_j_df_array, fps)
 
+    time_compute = time.time()- time_start_2
+    time_start_2 = time.time()
+
     train_size = subsample(file_j_processed, fps, training_fraction)
+
+    time_subsample = time.time()-time_start_2
+    time_start_2 = time.time()
 
     sampled_embeddings, sampled_frame_mapping, sampled_frame_number = learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number)
 
+    time_learn_embeddings = time.time()-time_start_2
+    time_start_2 = time.time()
+
     assignments = hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS)
+
+    time_hierarchy = time.time()-time_start_2
+    time_total = time.time()-time_start
 
     sampled_embeddings_filtered = sampled_embeddings[assignments>=0]
     assignments_filtered = assignments[assignments>=0]    
@@ -70,14 +90,25 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
         "HDBSCAN_max" : cluster_range[1]}
     
     df = pd.DataFrame(data)
-    
+
+    time_data = {
+    'Function': ['adp_filt', 'compute', 'subsample', 'learn_embeddings', 'hierarchy', 'Total'],
+    'Time (seconds)': [time_adp_filt, time_compute, time_subsample, time_learn_embeddings, time_hierarchy, time_total]
+    }
+
+    df_time = pd.DataFrame(time_data)
+
     if not os.path.isdir(os.path.join(folder_path, name)):
         os.mkdir(os.path.join(folder_path, name))
+
+    df_time.to_csv(os.path.join(folder_path, name, "time.csv"), index=False)
 
     df.to_csv(os.path.join(folder_path, name, "data.csv"), index=False) 
 
     plot = create_plotly(sampled_embeddings_filtered, assignments_filtered, csvfilename, sampled_frame_mapping_filtered, sampled_frame_number_filtered)
-
+    
+    plot.write_html(os.path.join(folder_path, name,'plot.html'))
+    
     graphJSON = json.dumps(plot, cls=plotly.utils.PlotlyJSONEncoder)
     with open(os.path.join(folder_path, name,'plot.json'), 'w') as f:
         f.write(graphJSON)

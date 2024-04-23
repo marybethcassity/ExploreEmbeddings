@@ -8,8 +8,11 @@ import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from psutil import virtual_memory
-import umap
+from umap import UMAP
 import hdbscan
+
+#from cuml.cluster import hdbscan
+#from cuml.manifold import UMAP 
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -22,6 +25,8 @@ import plotly.express as px
 import plotly 
 
 import json
+
+import random
 
 # bsoid_app/bsoid_utilities/likelihoodprocessing.py
 def boxcar_center(a, n):
@@ -212,7 +217,7 @@ def learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_m
     # sampled_features = features_transposed[np.random.choice(features_transposed.shape[0],
     #                                                                     train_size, replace=False)]
 
-    learned_embeddings = umap.UMAP(n_neighbors=60, n_components=num_dimensions,
+    learned_embeddings = UMAP(n_neighbors=60, n_components=num_dimensions,
                                                 **UMAP_PARAMS).fit(sampled_input_feats)
 
     sampled_embeddings = learned_embeddings.embedding_
@@ -272,6 +277,9 @@ def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampl
     
     text = [f"Frame: {frame}" for frame in sampled_frame_mapping_filtered]
 
+    unique_assignments = np.unique(assignments_filtered)
+    num_unique_assignments = len(unique_assignments)
+
     df = pd.DataFrame({
         'x': sampled_embeddings_filtered[:, 0],
         'y': sampled_embeddings_filtered[:, 1],  
@@ -281,16 +289,20 @@ def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampl
         'frame_number': sampled_frame_number_filtered
     })
 
+    colors = []
+    for _ in range(num_unique_assignments):
+        color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+        colors.append(color)
+
     fig = px.scatter_3d(df, x='x', y='y', z='z', color='assignments',
-                        labels={'color': 'Assignment'},
-                        custom_data=['frame_mapping', 'frame_number', 'assignments'])
+                        labels={'assignments': 'Assignment'},
+                        custom_data=['frame_mapping', 'frame_number', 'assignments'], 
+                        color_discrete_sequence=colors)
 
     fig.update_traces(marker_size=1)
 
     fig.update_traces(hovertemplate="<br>".join([
     "Frame: %{customdata[0]}"
     ]))
-
-    
 
     return fig

@@ -204,12 +204,8 @@ def home():
         load_plot = plotlyform.load_plot.data
         name = nameform.name.data
         loadname = request.form.get('loadname')
-
-        print("Loadname: ", loadname)
-        print("Folderpath: ", folder_path)
         
         if load_plot: 
-            print("loading plot")
             
             parameterform = ParameterForm(formdata=None)
     
@@ -224,15 +220,12 @@ def home():
                     shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
                     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
             
-            print(os.path.join(folder_path, loadname))
-            print(os.path.isdir(os.path.join(folder_path, loadname)))
-            
             for filename in os.listdir(os.path.join(folder_path, loadname)):
                 if filename.endswith('.json'):
                     with open(os.path.join(folder_path,loadname,filename), 'r', encoding='utf-8') as f:
                         graphJSON = f.read()
 
-                elif filename.endswith('.csv'):
+                elif filename == 'data.csv':
                     data = pd.read_csv(os.path.join(folder_path,loadname,filename))
                     sampled_frame_mapping_filtered = data["mapping"]
                     sampled_frame_number_filtered = data["frame_number"]
