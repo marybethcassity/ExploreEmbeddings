@@ -67,7 +67,7 @@ networkx
 notebook
 numba
 numpy
-opencv-GitPython
+opencv-python
 packaging
 pandas
 pandocfilters
