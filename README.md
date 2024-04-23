@@ -45,6 +45,7 @@ conda install pip
 python -m pip install -U pip
 ```
 
+Install the requirements
 ```
 pip install -r requirements.txt
 ```
