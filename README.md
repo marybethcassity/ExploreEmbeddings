@@ -22,7 +22,7 @@ cd /path/to/PoseEmbeddingsExplore
 
 **Step 5:** Create the anaconda environment 
 ```
-conda env create --name embeddings -f embeddings.yaml python=3.7.16
+conda env create --name embeddings -f requirements.yaml python=3.7.16
 ```
 (you can replace embeddings with any other environment name you want)
 
