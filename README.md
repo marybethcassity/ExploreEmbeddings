@@ -5,52 +5,36 @@
 **Step 1:** Install Anaconda distribtion [here](https://www.anaconda.com/download)
 
 
-**Step 2:** Create an anaconda environment 
+**Step 2:** Install git 
 ```
-conda create --name embeddings python=3.7.16
+conda install -c anaconda git 
+```
+
+**Step 3:** Clone the repository
+```
+git clone https://github.com/marybethcassity/PoseEmbeddingsExplore.git
+```
+
+**Step 4:** Navigate into the directory
+```
+cd /path/to/PoseEmbeddingsExplore
+```
+
+**Step 5:** Create the anaconda environment 
+```
+conda env create --name embeddings -f embeddings.yaml python=3.7.16
 ```
 (you can replace embeddings with any other environment name you want)
 
 
-**Step 3:** Activate the environment 
+**Step 6:** Activate the environment 
 ```
 conda activate embeddings 
 ```
 (make sure to replace embeddings with your environemnt name if you came up with your own)
 
 
-**Step 4:** Install git 
-```
-conda install -c anaconda git 
-```
-
-
-**Step 5:** Clone the repository
-```
-git clone https://github.com/marybethcassity/PoseEmbeddingsExplore.git
-```
-
-**Step 6:** Navigate into the directory
-```
-cd /path/to/PoseEmbeddingsExplore
-```
-
-**Step 7:** Install dependencies
-```
-conda install pip
-```
-
-(optional update pip)
-```
-python -m pip install -U pip
-```
-
-Install the requirements
-```
-pip install -r requirements.txt
-```
-
-**Step 8:** Run the app 
+**Step 7:** Run the app 
 
 ```
 python main.py
