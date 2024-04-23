@@ -1,6 +1,8 @@
 # Pose Embeddings Explore
 
-## Installation on Windows 
+## Windows (not GPU enabled)
+
+### Installation on Windows 
 
 **Step 1:** Install Visual Studio 2017 [here](https://download.visualstudio.microsoft.com/download/pr/4035d2dd-2d45-48eb-9104-d4dc7d808a7b/f5675416a31cbf8c29e74d75a1790cf7/vs_community.exe)
 
@@ -50,4 +52,6 @@ conda activate embeddings
 python main.py
 ```
 
-## Installation on WSL for GPU Enablement
+### Usage 
+
+## WSL (GPU enabled)
