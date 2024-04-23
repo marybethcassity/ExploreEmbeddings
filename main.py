@@ -82,11 +82,11 @@ class LoadNameForm(FlaskForm):
 
 class NameForm(FlaskForm):
     action = HiddenField(default='upload')
-    name = StringField('What do you want to name this plot?:')
+    name = StringField('What do you want to name this plot?')
 
 class FractionForm(FlaskForm):
     action = HiddenField(default='adjust')
-    slider = FloatField('Set the training input fraction within the range of 0.05 to 1:', default=1, widget=FractionWidget())
+    slider = FloatField('Set the training input fraction within the range of 0.05 to 1 (default: 1):', default=1, widget=FractionWidget())
 
 class KeypointForm(FlaskForm):
     action = HiddenField(default='upload')
@@ -94,12 +94,12 @@ class KeypointForm(FlaskForm):
 
 class ParameterForm(FlaskForm):
     action = HiddenField(default='parameters')
-    fps = IntegerField('Set the fps:', default=30, widget=NumberInput(step=1))
-    umap_min_dist = FloatField('Set the UMAP min distance:', default=0.0, widget=NumberInput(step=0.1, min = 0))
-    umap_random_state = IntegerField('Set the UMAP random seed:', default=42, widget=NumberInput(step=1))
-    hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples:', default=1, widget=NumberInput(step=1, min = 0))
-    hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon:', default=0.5, widget=NumberInput(step=0.1, min = 0))
-    hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon:', default=1.0, widget=NumberInput(step=0.1, min = 0))
+    fps = IntegerField('Set the fps (default: 30):', default=30, widget=NumberInput(step=1))
+    umap_min_dist = FloatField('Set the UMAP min distance (default: 0.0):', default=0.0, widget=NumberInput(step=0.1, min = 0))
+    umap_random_state = IntegerField('Set the UMAP random seed (default: 42):', default=42, widget=NumberInput(step=1))
+    hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples (default: 1):', default=1, widget=NumberInput(step=1, min = 0))
+    hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon (default: 0.5):', default=0.5, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon (default: 1.0):', default=1.0, widget=NumberInput(step=0.1, min = 0))
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
