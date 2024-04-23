@@ -40,4 +40,4 @@ conda activate embeddings
 python main.py
 ```
 
-## Installation on Windows 
+## Installation on WLS for GPU Enablement
