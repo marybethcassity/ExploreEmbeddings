@@ -23,7 +23,6 @@ conda activate embeddings
 ```
 conda install -c anaconda git 
 ```
-(make sure to replace embeddings with your environemnt name if you came up with your own)
 
 
 **Step 5:** Clone the repository
