@@ -19,6 +19,11 @@ conda activate embeddings
 (make sure to replace embeddings with your environemnt name if you came up with your own)
 
 
+**Step 4:** Clone the repository
+```
+git clone https://github.com/marybethcassity/PoseEmbeddingsExplore.git
+```
+
 **Step 4:** Navigate into the directory
 ```
 cd /path/to/PoseEmbeddingsExplore
@@ -43,3 +48,5 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
+
+## Installation on Windows 
