@@ -1,4 +1,4 @@
-This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embeddings and behavioral clustering use the B-SOID algorithms. Currently, we only support DeepLabCut. 
+This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embedding (UMAP) and behavioral clustering (HDBSCAN) use the B-SOID algorithms. Currently, we only support DeepLabCut. 
 
 ## Windows (not GPU enabled)
 
