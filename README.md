@@ -95,6 +95,9 @@ If you want to generate DLC keypoints on the video frames, check the Generate DL
 Click the `Step 2: Save images in clusters` button if you want to save the mp4 frames sorted in their behavorvial cluster. Histograms of the interframe difference of each cluster will also be generated. 
 
 #### Explanation
-See [this](https://scikit-learn.org/stable/modules/clustering.html) guide for comparison of DBSCAN and HDBSCAN with other unsupervised clustering algorithms. 
+See Josh Starmer's StatQuest channel [here](https://www.youtube.com/watch?v=eN0wFzBA4Sc) for an intro to UMAP and [here](https://www.youtube.com/watch?v=jth4kEvJ3P8) for a more in depth explanation of UMAP. It may also be helpful to watch his video on t-SNE [here](https://www.youtube.com/watch?v=NEaUSP4YerM).
 
+See [here](https://scikit-learn.org/stable/modules/clustering.html) for a comparison of DBSCAN and HDBSCAN with other unsupervised clustering algorithms and [here](https://www.youtube.com/watch?v=RDZUdRSDOok) for the StatQuest DBSCAN video. Note, the B-SOID algorithm and our app uses HDBSCAN.  
+
+See [here](https://hdbscan.readthedocs.io/en/latest/parameter_selection.html) for an explanation of HDBSCAN parameters and [here](https://umap-learn.readthedocs.io/en/latest/parameters.html) for an explanation of UMAP parameters. 
 
