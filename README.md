@@ -1,4 +1,4 @@
-This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embedding (UMAP) and behavioral clustering (HDBSCAN) use the B-SOID algorithms. Currently, we only support [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut). For help with DeepLabCut install, see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
+This project was created to explore behavorial pose embeddings. Currently, we only support [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut) and [B-SOID](https://bsoid.org/). For help with DeepLabCut install, see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
 
 ## Windows (not GPU enabled)
 
