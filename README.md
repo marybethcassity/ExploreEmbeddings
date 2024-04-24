@@ -14,7 +14,7 @@ Make sure to install Desktop development with C++
 **Step 2:** Restart your computer
 
 
-**Step 3:** Install Anaconda distribtion [here](https://www.anaconda.com/download)
+**Step 3:** Install Anaconda distribution [here](https://www.anaconda.com/download)
 
 
 **Step 4:** Install git 
