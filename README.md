@@ -63,5 +63,27 @@ python main.py
 ## WSL (GPU enabled)
 
 ## Usage 
-**Step 1:** Provide the path to the folder containing csv files from [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut) and corresponding mp4 files. For help with DeepLabCut install see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
+
+**Step 1:** Provide the absolute path to the folder containing csv files from [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut) and corresponding mp4 files. For help with DeepLabCut install see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
+
+**Step 2:** Check the box to determine if you are going to load a previously created plot or create a new one. 
+
+#### If creating a new plot
+
+**Step 3:** Name the plot. This will be the name of the subdirectory containing the plot json and the corresponding files.
+
+**Step 4:** Set the parameters. The default parameters will automatically load. 
+
+**Step 5:** Click the Generate UMAP Embedding button. 
+
+#### If loading a previously created plot
+
+**Step 3:** Select the subdirectory containing the plot json you want to load.
+> [!NOTE]
+The dropdown menu will contain the names of all of the subdirectorys in the main folder you provided (containing the csv and mp4 files). You do not provide the path to the plot json file in Step 1, you select the subdirectory containing the plot json from the drop down.
+
+**Step 4:** Click the Generate UMAP Embedding button. 
+
+#### Optional
+
 
