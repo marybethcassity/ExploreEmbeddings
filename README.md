@@ -76,7 +76,7 @@ The app will be a bit touchy while in development. If there is a mistake in the 
 
 **Step 4:** Set the parameters. The default parameters will automatically load. 
 
-**Step 5:** Click the [<kbd> <br> Generate UMAP Embedding <br> </kbd>] button. When the plot loads, you can explore it and click on datapoints to view the corresponding mp4 frame.
+**Step 5:** Click the `Generate UMAP Embedding` button. When the plot loads, you can explore it and click on datapoints to view the corresponding mp4 frame.
 
 #### If loading a previously created plot
 
@@ -84,12 +84,12 @@ The app will be a bit touchy while in development. If there is a mistake in the 
 > [!NOTE]
 The dropdown menu will contain the names of all of the subdirectorys in the main folder you provided (containing the csv and mp4 files). You do not provide the path to the plot json file in Step 1, you select the subdirectory containing the plot json from the drop down.
 
-**Step 4:** Click the [<kbd> <br> Generate UMAP Embedding <br> </kbd>] button. When the plot loads, you can explore it and click on datapoints to view the corresponding mp4 frame.
+**Step 4:** Click the `Generate UMAP Embedding` button. When the plot loads, you can explore it and click on datapoints to view the corresponding mp4 frame.
 
 #### Optional
 
 If you want to generate DLC keypoints on the video frames, check the Generate DLC keypoints? box.
 
-Click the [<kbd> <br> Save images in clusters <br> </kbd>] button if you want to save the mp4 frames sorted in their behavorvial cluster. Histograms of the interframe difference of each cluster will also be generated. 
+Click the `Save images in clusters` button if you want to save the mp4 frames sorted in their behavorvial cluster. Histograms of the interframe difference of each cluster will also be generated. 
 
 
