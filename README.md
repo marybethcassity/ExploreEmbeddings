@@ -1,4 +1,4 @@
-This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embedding (UMAP) and behavioral clustering (HDBSCAN) use the B-SOID algorithms. Currently, we only support DeepLabCut. 
+This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embedding (UMAP) and behavioral clustering (HDBSCAN) use the B-SOID algorithms. Currently, we only support [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut). For help with DeepLabCut install, see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
 
 ## Windows (not GPU enabled)
 
@@ -63,6 +63,8 @@ python main.py
 ```
 
 ## WSL (GPU enabled)
+
+To use [RAPIDS](https://rapids.ai/) GPU enabled implementation of UMAP and DBSCAN, you need either a Linux or Mac OS. See [this](https://docs.google.com/document/d/1eBdohojmcCR4wT-GW3WUpijzp0HnEUXjHQlrd3pobnM/edit?usp=sharing) document for help with WSL install. 
 
 ## Usage 
 > [!NOTE]
