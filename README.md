@@ -34,8 +34,13 @@ cd /path/to/PoseEmbeddingsExplore
 
 If you cloned the repository into C:\Users\<your username>, this will be:
 ```
+cd C:\Users\<your username>\PoseEmbeddingsExplore
+```
+or
+```
 cd PoseEmbeddingsExplore
 ```
+if you are currently in C:\Users\<your username>
 
 **Step 7:** Create the anaconda environment 
 ```
