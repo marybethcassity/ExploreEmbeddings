@@ -60,6 +60,8 @@ conda activate embeddings
 python main.py
 ```
 
-### Usage 
-
 ## WSL (GPU enabled)
+
+## Usage 
+**Step 1:** Provide the path to the folder containing csv files from [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut) and corresponding mp4 files. For help with DeepLabCut install see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
+
