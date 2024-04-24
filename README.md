@@ -63,6 +63,8 @@ python main.py
 ## WSL (GPU enabled)
 
 ## Usage 
+> [!NOTE]
+The app will be a bit touchy while in development. If there is a mistake in the path provided, etc. it will most likely throw an error and you will have to restart the app by CTRL+c and running python main.py. Warnings are in the works and this will be fixed in the future :). Also, the path must be provided each time you want to load the plot. If you aren't able to get the dropdown menu to work, delete the path and enter it again. 
 
 **Step 1:** Provide the absolute path to the folder containing csv files from [DeepLabCut](https://www.mackenziemathislab.org/deeplabcut) and corresponding mp4 files. For help with DeepLabCut install see [this](https://docs.google.com/document/d/1VsdeL4G_OTTggeyv5SzAn8GRBjdLrDKKMCqUvYcxpRQ/edit?usp=sharing) document. 
 
