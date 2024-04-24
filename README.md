@@ -1,3 +1,5 @@
+This project was created to explore [B-SOID](https://bsoid.org/) embeddings. The pose embeddings and behavioral clustering use the B-SOID algorithms. Currently, we only support DeepLabCut. 
+
 ## Windows (not GPU enabled)
 
 ### Installation on Windows 
@@ -91,5 +93,8 @@ The dropdown menu will contain the names of all of the subdirectorys in the main
 If you want to generate DLC keypoints on the video frames, check the Generate DLC keypoints? box.
 
 Click the `Step 2: Save images in clusters` button if you want to save the mp4 frames sorted in their behavorvial cluster. Histograms of the interframe difference of each cluster will also be generated. 
+
+#### Explanation
+See [this](https://scikit-learn.org/stable/modules/clustering.html) guide for comparison of DBSCAN and HDBSCAN with other unsupervised clustering algorithms. 
 
 
