@@ -32,7 +32,7 @@ cd /path/to/PoseEmbeddingsExplore
 
 If you cloned the repository into C:\Users\your username, this will be:
 ```
-cd C:\Users\<your username>\PoseEmbeddingsExplore
+cd C:\Users\your username\PoseEmbeddingsExplore
 ```
 or
 ```
@@ -44,14 +44,14 @@ if you are currently in C:\Users\your username
 ```
 conda env create --name embeddings -f requirements.yml 
 ```
-(you can replace <embeddings> with any other environment name you want)
+(you can replace embeddings with any other environment name you want)
 
 
 **Step 8:** Activate the environment 
 ```
 conda activate embeddings 
 ```
-(make sure to replace <embeddings> with your environment name if you came up with your own)
+(make sure to replace embeddings with your environment name if you came up with your own)
 
 
 **Step 9:** Run the app 
