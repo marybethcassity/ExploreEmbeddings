@@ -82,6 +82,7 @@ The app will be a bit touchy while in development. If there is a mistake in the 
 
 > [!IMPORTANT]
 Make sure to set the fps of the mp4. If you don't know the fps, you can find it by right clicking on the mp4 file, and finding it on the Details tab of the file properties. 
+
 ![image](https://github.com/marybethcassity/PoseEmbeddingsExplore/assets/70182553/da1c1264-7afe-45a2-8f40-a37cd60964f5)
 
 
