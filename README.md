@@ -64,7 +64,7 @@ python main.py
 
 ## WSL (GPU enabled)
 
-To use [RAPIDS](https://rapids.ai/) GPU enabled implementation of UMAP and DBSCAN, you need either a Linux or Mac OS. See [this](https://docs.google.com/document/d/1eBdohojmcCR4wT-GW3WUpijzp0HnEUXjHQlrd3pobnM/edit?usp=sharing) document for help with WSL install and for setting up the environment in WSL. 
+To use [RAPIDS](https://rapids.ai/) GPU enabled implementation of UMAP and HDBSCAN, you need either a Linux or Mac OS. See [this](https://docs.google.com/document/d/1eBdohojmcCR4wT-GW3WUpijzp0HnEUXjHQlrd3pobnM/edit?usp=sharing) document for help with WSL install and for setting up the environment in WSL. 
 
 ## Usage 
 > [!NOTE]
