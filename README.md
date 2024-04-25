@@ -109,5 +109,8 @@ See Josh Starmer's StatQuest channel [here](https://www.youtube.com/watch?v=eN0w
 
 See [here](https://scikit-learn.org/stable/modules/clustering.html) for a comparison of DBSCAN and HDBSCAN with other unsupervised clustering algorithms and [here](https://www.youtube.com/watch?v=RDZUdRSDOok) for the StatQuest DBSCAN video. Note, the B-SOID algorithm and our app uses HDBSCAN.  
 
-See [here](https://umap-learn.readthedocs.io/en/latest/parameters.html) for an explanation of UMAP parameters and [here](https://hdbscan.readthedocs.io/en/latest/parameter_selection.html) for an explanation of HDBSCAN parameters. Please read [here](https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html) carefully to understand the HDBSCAN algorithm-- I found the section **Condense the cluster tree** to be very helpful to understand minimin cluster size. The B-SOID algorithm walks through a linearly spaced selection of 25 cluster sizes from minimim cluster size to maximum cluster size, using this as an input for minimum cluster size and then returns the clustering that resulted in the largest number of clusters. 
+See [here](https://umap-learn.readthedocs.io/en/latest/parameters.html) for an explanation of UMAP parameters and [here](https://hdbscan.readthedocs.io/en/latest/parameter_selection.html) for an explanation of HDBSCAN parameters. 
+
+> [!TIP]
+Please read [here](https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html) carefully to understand the HDBSCAN algorithm-- I found the section **Condense the cluster tree** to be very helpful to understand minimin cluster size. The B-SOID algorithm walks through a linearly spaced selection of 25 cluster sizes from minimim cluster size to maximum cluster size, using this as an input for minimum cluster size and then returns the clustering that resulted in the largest number of clusters. 
 
