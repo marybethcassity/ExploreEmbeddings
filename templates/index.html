@@ -7,7 +7,8 @@
     <title>Home</title>
     <script src="{{ url_for('static', filename='js/jquery-1.11.1.min.js') }}"></script>
     <script src="https://cdn.plot.ly/plotly-2.8.3.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.4.1/dist/panzoom.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css"/>
+    <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
     <style>
         .container {
             display: flex;
@@ -20,7 +21,7 @@
             width: 3840/2px; /* Adjust the width as needed */   
             height: 2160/2px;
         }
-
+        
         #frame-container {
             flex: 1; /* Allows each child to grow equally */
             max-width: 50%; /* Adjust the width as needed */
@@ -30,15 +31,38 @@
             align-items: center;      
             justify-content: center; 
         }
-        
-        #frame-container img {
-            max-width: 100%; /* Ensures the image fits within the container */
-            height: auto; /* Keeps the image aspect ratio */
-            flex: none;  
-            transform-origin: 50% 50%;
-            transform: scale(1) translate(0px, 0px);
-            cursor: grab;
+
+        .swiper-container {
+        width: 100%; /* Full width of the frame-container */
+        height: 100%; /* Full height of the frame-container */
         }
+
+        .swiper-wrapper {
+            width: 100%;
+            height: 100%;
+        }
+
+        .swiper-slide {
+            overflow: hidden;
+        }
+
+        .swiper-slide img {
+            max-width: 100%; /* Ensures the image fits within the slide */
+            max-height: auto; /* Limits the image height to the slide */
+            flex: none;
+            object-fit: contain;
+        }
+
+        .frame-number {
+            position: absolute; /* Position the frame number absolutely within the slide */
+            top: 10px; /* Adjust the vertical position as needed */
+            left: 10px; /* Adjust the horizontal position as needed */
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+            padding: 5px; /* Add some padding around the text */
+            font-weight: bold; /* Make the text bold for better visibility */
+            z-index: 1; /* Add this line to ensure the frame number is on top of the image */
+        }
+
         .small-input-box {
             width: 40px; /* Adjust the width as needed */
         }
@@ -107,11 +131,11 @@
             </div>
         
             <div>
-                {{ parameterform.hdbscan_eps_min.label }} {{ parameterform.hdbscan_eps_min(class = 'small-input-box') }} 
+                {{ parameterform.hdbscan_cluster_min.label }} {{ parameterform.hdbscan_cluster_min(class = 'small-input-box') }} 
             </div>
         
             <div>
-                {{ parameterform.hdbscan_eps_max.label }} {{ parameterform.hdbscan_eps_max(class = 'small-input-box') }} 
+                {{ parameterform.hdbscan_cluster_max.label }} {{ parameterform.hdbscan_cluster_max(class = 'small-input-box') }} 
             </div>
         </div>
 
@@ -135,7 +159,13 @@
 
     <div class="container">
         <div id="graph"></div>
-        <div id="frame-container"><div id="img"></div></div>
+        <div class="swiper-container" id="frame-container">
+            <div class="swiper-wrapper">
+    
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
     </div>
     
     <div id="plot-info"></div>
@@ -164,7 +194,6 @@
     }   
     
     document.getElementById('folderInput').addEventListener('change', updateFolderList);
-
 
         function updateFolderList() {
             var path = document.getElementById('folderInput').value;
@@ -195,15 +224,15 @@
         display.textContent = this.value;
         }
 
-        const minField = document.getElementById('{{ parameterform.hdbscan_eps_min.id }}');
-        const maxField = document.getElementById('{{ parameterform.hdbscan_eps_max.id }}');
+        const minField = document.getElementById('{{ parameterform.hdbscan_cluster_min.id }}');
+        const maxField = document.getElementById('{{ parameterform.hdbscan_cluster_max.id }}');
 
         // Function to update constraints
         function updateConstraints() {
-            const minValue = parseFloat(minField.value); // Get the current value of hdbscan_eps_min
+            const minValue = parseFloat(minField.value); // Get the current value of hdbscan_cluster_min
             const maxValue = parseFloat(maxField.value); // Get the current value of hdbscan_eps_max
 
-            // Set the min attribute of hdbscan_eps_max to ensure it's not less than hdbscan_eps_min
+            // Set the min attribute of hdbscan_cluster_max to ensure it's not less than hdbscan_cluster_min
             maxField.min = minValue;
 
             // If the current max is less than the new min, adjust it to match the min
@@ -235,44 +264,6 @@
                 };
             });
 
-            $.ajax({
-                url: '/process_click_data',
-                type: 'POST',
-                data: JSON.stringify(clickInfo),
-                contentType: 'application/json',
-                success: function(response) {
-                    console.log('Click data sent successfully:', response);
-
-                    if (response.frame_data) {
-                        // Create an image element and set its src attribute with the frame data
-                        var frameContainer = document.getElementById('frame-container');
-                        frameContainer.innerHTML = '';
-                        var frameImage = document.createElement('img');
-                        frameImage.src = 'data:image/jpeg;base64,' + response.frame_data;
-                        frameImage.width = 3840/2; 
-                        frameImage.height = 2160/2;
-                        frameContainer.appendChild(frameImage);
-
-                        const panzoom = Panzoom(frameImage, {
-                            minScale: 1,
-                            maxScale: 10,
-                            //contain: 'inside'
-                        });
-
-                        frameContainer.addEventListener('wheel', function(event) {
-                            panzoom.zoomWithWheel(event);
-                        });
-                    
-                    } else {
-                        console.error(response.error);
-                    }
-
-                },
-                error: function(error) {
-                    console.error('Error sending click data:', error);
-                }
-            });
-
             var infoDiv = document.getElementById('plot-info');
             infoDiv.innerHTML = '';
 
@@ -282,8 +273,74 @@
                                       ', mapped frame: ' + info.frame_mapping + ', mp4 frame: ' + info.frame_number + ', assignment: ' + info.assignment;
                 infoDiv.appendChild(infoElement);
             }); 
-            
-        });
+
+            $.ajax({
+                url: '/process_click_data',
+                type: 'POST',
+                data: JSON.stringify(clickInfo),
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log('Click data sent successfully:', response);
+
+                    var swiperWrapper = document.querySelector('.swiper-wrapper');
+                    swiperWrapper.innerHTML = ''; // Clear existing slides
+
+                    if (response.frame_data && response.frame_data.length > 0) {
+                        response.frame_data.forEach(function(frameData, index) {
+                            var slide = document.createElement('div');
+                            slide.className = 'swiper-slide';
+
+                            var zoomContainer = document.createElement('div');
+                            zoomContainer.className = 'swiper-zoom-container';
+
+                            var frameNumber = document.createElement('div');
+                            frameNumber.className = 'frame-number';
+                            frameNumber.textContent = 'Frame: ' + response.frames[index];
+
+                            var frameImage = document.createElement('img');
+                            frameImage.src = 'data:image/jpeg;base64,' + frameData;
+                            frameImage.style.width = '100%'; // Full width of the slide
+                            frameImage.style.height = 'auto'; // Maintain aspect ratio
+
+                            zoomContainer.appendChild(frameImage);
+                            slide.appendChild(frameNumber);
+                            slide.appendChild(zoomContainer);
+                            swiperWrapper.appendChild(slide); // Append the slide to the swiper wrapper
+                        });
+
+                        var middleIndex = Math.floor(response.frame_data.length / 2);
+
+                        // Initialize or update Swiper
+
+                        if (window.mySwiper) {
+                            window.mySwiper.destroy(true, true);
+                        }
+                        window.mySwiper = new Swiper('.swiper-container', {
+                            loop: false,
+                            navigation: {
+                                nextEl: '.swiper-button-next',
+                                prevEl: '.swiper-button-prev',
+                            },
+                            zoom: {
+                                enabled: true,
+                                maxRatio: 5,  // Maximum zoom ratio
+                                minRatio: 1,  // Minimum zoom ratio (default scale)
+                            },
+                            initialSlide: middleIndex
+                            });
+                       
+                        window.mySwiper.update(); // Update Swiper if already initialized
+                        frameNumberContainer.textContent = 'Frame Number: ' + response.frames[window.mySwiper.activeIndex];
+                    
+                    } else {
+                        console.error("No images returned from the server.");
+                    }
+                },
+                error: function(error) {
+                    console.error('Error sending click data:', error);
+                }
+            });
+        }) 
     </script>
 </body>
 </html>

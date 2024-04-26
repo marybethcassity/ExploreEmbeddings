@@ -98,8 +98,8 @@ class ParameterForm(FlaskForm):
     umap_min_dist = FloatField('Set the UMAP min distance (default: 0.0):', default=0.0, widget=NumberInput(step=0.1, min = 0))
     umap_random_state = IntegerField('Set the UMAP random seed (default: 42):', default=42, widget=NumberInput(step=1))
     hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples (default: 1):', default=1, widget=NumberInput(step=1, min = 0))
-    hdbscan_eps_min = FloatField('Set the HDBSCAN min epsilon (default: 0.5):', default=0.5, widget=NumberInput(step=0.1, min = 0))
-    hdbscan_eps_max = FloatField('Set the HDBSCAN max epsilon (default: 1.0):', default=1.0, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_cluster_min = FloatField('Set the HDBSCAN min cluster size (default: 0.5):', default=0.5, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_cluster_max = FloatField('Set the HDBSCAN max cluster size (default: 1.0):', default=1.0, widget=NumberInput(step=0.1, min = 0))
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
@@ -119,8 +119,8 @@ def get_folders():
 @app.route('/process_click_data', methods=['POST'])
 def process_click_data():
     click_data = request.get_json()
-    frame_mapping = click_data[0]['frame_mapping'] if click_data else None
-    frame_number = click_data[0]['frame_number']
+    frame_mapping = int(click_data[0]['frame_mapping']) if click_data else None
+    frame_number = int(click_data[0]['frame_number'])
 
     if frame_mapping is not None:
         
@@ -132,40 +132,57 @@ def process_click_data():
                 csvfilepath = session_data.csv_path
                 mp4filepath = session_data.mp4_path
                 keypoints = session_data.keypoints
+                #mapping = np.array(session_data.sampled_frame_mapping_filtered)
+                #number = np.array(session_data.sampled_frame_number_filtered)
 
         file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
         file_j_df_array = np.array(file_j_df)
 
         if mp4filepath is not None:
             mp4 = cv2.VideoCapture(mp4filepath)
-            mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-            ret, frame = mp4.read()
+            frame_images = []
+            frames = []
+
+            frame_numbers = []
+            frame_mappings = []
+            
+            window = 5
+
+            #start_mapping = np.where(frame_mapping==mapping)
+            
+            for i in range(frame_number-window, frame_number+window+1):
+                frame_numbers.append(i)
+                
+            for j in range(frame_mapping-window, frame_mapping+window+1):
+                frame_mappings.append(j)
+
+            for k in range(len(frame_numbers)):
+                mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
+                ret, frame = mp4.read()
+
+                if ret: 
+                    if keypoints:
+
+                        keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mappings[k]))][0]
+
+                        x = keypoint_data[1::3] 
+                        y = keypoint_data[2::3]
+
+                        xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                        xy = [(int(float(x)), int(float(y))) for x, y in xy]
+
+                        for point in xy: 
+                            cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
+                    
+                    
+                    _, buffer = cv2.imencode('.jpg', frame)
+                    frame_data = base64.b64encode(buffer).decode('utf-8')
+                    frame_images.append(frame_data)
+                    frames.append(frame_mappings[k])
+                    
             mp4.release()
 
-            if ret: 
-                if keypoints:
-
-                    keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mapping))][0]
-
-                    x = keypoint_data[1::3] 
-                    y = keypoint_data[2::3]
-
-                    xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
-                    xy = [(int(float(x)), int(float(y))) for x, y in xy]
-
-                    for point in xy: 
-                        cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
-                
-                _, buffer = cv2.imencode('.jpg', frame)
-                frame_data = base64.b64encode(buffer).decode('utf-8')
-
-                return jsonify({'frame_data': frame_data})
-            else:
-                return jsonify({'error': 'Failed to retrieve frame'}), 400
-        else:
-            return jsonify({'error': 'Video not loaded'}), 400
-    else:
-        return jsonify({'error': 'Missing frame number'}), 400
+        return jsonify({'frame_data': frame_images, 'frames': frames})
 
 
 @app.route('/', methods = ["GET", "POST"])
@@ -190,8 +207,8 @@ def home():
     #     parameterform.umap_min_dist.data = form_data.get('umap_min_dist')
     #     parameterform.umap_random_state.data = form_data.get('umap_random_state')
     #     parameterform.hdbscan_min_samples.data = form_data.get('hdbscan_min_samples')
-    #     parameterform.hdbscan_eps_min.data = form_data.get('hdbscan_eps_min')
-    #     parameterform.hdbscan_eps_max.data = form_data.get('hdbscan_eps_max')
+    #     parameterform.hdbscan_cluster_min.data = form_data.get('hdbscan_cluster_min')
+    #     parameterform.hdbscan_cluster_max.data = form_data.get('hdbscan_cluster_max')
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         
@@ -241,8 +258,8 @@ def home():
                     parameterform.umap_min_dist.data = UMAP_min
                     parameterform.umap_random_state.data = UMAP_seed
                     parameterform.hdbscan_min_samples.data = HDBSCAN_samples
-                    parameterform.hdbscan_eps_min.data = HDBSCAN_min
-                    parameterform.hdbscan_eps_max.data = HDBSCAN_max
+                    parameterform.hdbscan_cluster_min.data = HDBSCAN_min
+                    parameterform.hdbscan_cluster_max.data = HDBSCAN_max
 
         else: 
             
@@ -250,8 +267,8 @@ def home():
             mindist = parameterform.umap_min_dist.data
             randomstate = parameterform.umap_random_state.data
             minsamples=parameterform.hdbscan_min_samples.data
-            min_eps = parameterform.hdbscan_eps_min.data
-            max_eps = parameterform.hdbscan_eps_max.data
+            min_cluster = parameterform.hdbscan_cluster_min.data
+            max_cluster = parameterform.hdbscan_cluster_max.data
             name = nameform.name.data
 
             UMAP_PARAMS = {
@@ -263,7 +280,7 @@ def home():
                 'min_samples': minsamples,
             }
 
-            cluster_range = [min_eps, max_eps]
+            cluster_range = [min_cluster, max_cluster]
             
             graphJSON, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
