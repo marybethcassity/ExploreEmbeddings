@@ -147,6 +147,13 @@
             {{ uploadform.upload(class = 'upload-button')}}
         </div>
 
+        <div id="radioControl" style="display:none;">
+            <input type="radio" id="returnHome" name="return" value="home" checked>
+            <label for="returnHome">Swipe through sequential mp4 frames</label>
+            <input type="radio" id="goToSettings" name="return" value="settings">
+            <label for="goToSettings">Swipe through sequential cluster frames</label>
+        </div>
+
     </form>
 
     <form method='POST' enctype='multipart/form-data'>
@@ -249,8 +256,11 @@
             
         var graph = {{graphJSON | safe}};
             console.log(graph); 
-            Plotly.newPlot('graph', graph,{});
-
+            if (graph) {
+                Plotly.newPlot('graph', graph, {});
+                // Show the radio button when the plot is available
+                document.getElementById('radioControl').style.display = 'block';
+            }
             var plotDiv = document.getElementById('graph');
         plotDiv.on('plotly_click', function(data) {
             var clickInfo = data.points.map(function(point) {

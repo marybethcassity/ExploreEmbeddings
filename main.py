@@ -98,8 +98,8 @@ class ParameterForm(FlaskForm):
     umap_min_dist = FloatField('Set the UMAP min distance (default: 0.0):', default=0.0, widget=NumberInput(step=0.1, min = 0))
     umap_random_state = IntegerField('Set the UMAP random seed (default: 42):', default=42, widget=NumberInput(step=1))
     hdbscan_min_samples = IntegerField('Set the HDBSCAN min samples (default: 1):', default=1, widget=NumberInput(step=1, min = 0))
-    hdbscan_cluster_min = FloatField('Set the HDBSCAN min cluster size (default: 0.5):', default=0.5, widget=NumberInput(step=0.1, min = 0))
-    hdbscan_cluster_max = FloatField('Set the HDBSCAN max cluster size (default: 1.0):', default=1.0, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_cluster_min = FloatField('Set the percent of dataset for HDBSCAN min cluster size (default: 0.5):', default=0.5, widget=NumberInput(step=0.1, min = 0))
+    hdbscan_cluster_max = FloatField('Set the percent of dataset for HDBSCAN max cluster size (default: 1.0):', default=1.0, widget=NumberInput(step=0.1, min = 0))
 
 class ClusterForm(FlaskForm):
     action = HiddenField(default='cluster')
@@ -216,13 +216,12 @@ def home():
         db.session.commit()
 
         folder_path = uploadform.folder.data
-        training_fraction = fractionform.slider.data
         keypoints = keypointform.keypoints.data
         load_plot = plotlyform.load_plot.data
-        name = nameform.name.data
-        loadname = request.form.get('loadname')
+    
         
         if load_plot: 
+            name = loadnameform.loadname.data
             
             parameterform = ParameterForm(formdata=None)
     
@@ -237,13 +236,13 @@ def home():
                     shutil.copyfile(os.path.join(folder_path,filename), csvfilepath)
                     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
             
-            for filename in os.listdir(os.path.join(folder_path, loadname)):
+            for filename in os.listdir(os.path.join(folder_path, name)):
                 if filename.endswith('.json'):
-                    with open(os.path.join(folder_path,loadname,filename), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(folder_path,name,filename), 'r', encoding='utf-8') as f:
                         graphJSON = f.read()
 
                 elif filename == 'data.csv':
-                    data = pd.read_csv(os.path.join(folder_path,loadname,filename))
+                    data = pd.read_csv(os.path.join(folder_path,name,filename))
                     sampled_frame_mapping_filtered = data["mapping"]
                     sampled_frame_number_filtered = data["frame_number"]
                     assignments_filtered = data["assignments"]
@@ -264,6 +263,7 @@ def home():
         else: 
             
             fps = parameterform.fps.data
+            training_fraction = fractionform.slider.data
             mindist = parameterform.umap_min_dist.data
             randomstate = parameterform.umap_random_state.data
             minsamples=parameterform.hdbscan_min_samples.data
@@ -315,6 +315,7 @@ def home():
                 sampled_frame_mapping_filtered = session_data.sampled_frame_mapping_filtered
                 keypoints = session_data.keypoints
                 name = session_data.name
+                print("name:", name)
         
         save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints, name)
     

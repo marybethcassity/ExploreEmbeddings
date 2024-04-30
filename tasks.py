@@ -121,6 +121,7 @@ def save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_fil
     if not os.path.isdir(os.path.join(folder_path, name,'histograms')):
         os.mkdir(os.path.join(folder_path, name,'histograms'))
 
+    print(os.path.join(folder_path,name))
     file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
     file_j_df_array = np.array(file_j_df)
     mp4 = cv2.VideoCapture(mp4filepath)
