@@ -65,7 +65,7 @@
         
         .frame-assignment {
             position: absolute; /* Position the frame number absolutely within the slide */
-            top: 60px; /* Adjust the vertical position as needed */
+            top: 50px; /* Adjust the vertical position as needed */
             left: 10px; /* Adjust the horizontal position as needed */
             background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
             padding: 5px; /* Add some padding around the text */
@@ -340,7 +340,7 @@
                             swiperWrapper.appendChild(slide); // Append the slide to the swiper wrapper
                         });
 
-                        var middleIndex = Math.floor(response.frame_data.length / 2);
+                        var middleIndex = response.middle_index;
 
                         // Initialize or update Swiper
 

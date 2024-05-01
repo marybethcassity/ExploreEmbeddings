@@ -155,20 +155,27 @@ def process_click_data():
 
             #start_mapping = np.where(frame_mapping==mapping)
             if radio_button_value == 'single':
+                window = 0
                 frame_numbers.append(frame_number)
                 frame_mappings.append(frame_mapping)
                 frame_assignments.append(frame_assignment)
             
             elif radio_button_value == 'sequential_mp4':
-                for i in range(frame_number-window, frame_number+window+1):
+                for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
                     frame_numbers.append(i)   
-                for j in range(frame_mapping-window, frame_mapping+window+1):
+                for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
                     frame_mappings.append(j)
                     if j in mappings:
                         index = np.where(mappings==j)[0][0]
                         frame_assignments.append(int(assignments[index]))
                     else: 
                         frame_assignments.append('')
+
+                print("FRAME NUMBERS")
+                print(frame_numbers)
+
+                print("FRAME ASSIGNMENTS")
+                print(frame_assignments)
 
             elif radio_button_value == 'sequential_cluster':
                 indeces = np.where(assignments==frame_assignment)
@@ -182,10 +189,13 @@ def process_click_data():
                 frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
 
                 index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
+
+                start_index = max(0, index - window)
+                end_index = min(len(frame_numbers_sorted), index + window + 1)
               
-                frame_numbers = frame_numbers_sorted[index-window:index+window+1] 
-                frame_mappings = frame_mappings_sorted[index-window:index+window+1]
-                frame_assignments = frame_assignments_sorted[index-window:index+window+1]
+                frame_numbers = frame_numbers_sorted[start_index:end_index]
+                frame_mappings = frame_mappings_sorted[start_index:end_index]
+                frame_assignments = frame_assignments_sorted[start_index:end_index]
 
                 frame_numbers = frame_numbers.tolist()
                 frame_mappings = frame_mappings.tolist()
@@ -216,7 +226,7 @@ def process_click_data():
                   
             mp4.release()
 
-        return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments})
+        return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': window})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])
