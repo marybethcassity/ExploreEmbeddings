@@ -62,6 +62,16 @@
             font-weight: bold; /* Make the text bold for better visibility */
             z-index: 1; /* Add this line to ensure the frame number is on top of the image */
         }
+        
+        .frame-assignment {
+            position: absolute; /* Position the frame number absolutely within the slide */
+            top: 60px; /* Adjust the vertical position as needed */
+            left: 10px; /* Adjust the horizontal position as needed */
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+            padding: 5px; /* Add some padding around the text */
+            font-weight: bold; /* Make the text bold for better visibility */
+            z-index: 1; /* Add this line to ensure the frame number is on top of the image */
+        }
 
         .small-input-box {
             width: 40px; /* Adjust the width as needed */
@@ -148,10 +158,12 @@
         </div>
 
         <div id="radioControl" style="display:none;">
-            <input type="radio" id="returnHome" name="return" value="home" checked>
-            <label for="returnHome">Swipe through sequential mp4 frames</label>
-            <input type="radio" id="goToSettings" name="return" value="settings">
-            <label for="goToSettings">Swipe through sequential cluster frames</label>
+            <input type="radio" id="single" name="return" value="single" checked>
+            <label for="single">Load single frame</label>
+            <input type="radio" id="sequential_mp4" name="return" value="sequential_mp4">
+            <label for="sequential_mp4">Swipe through sequential mp4 frames</label>
+            <input type="radio" id="sequential_cluster" name="return" value="sequential_cluster">
+            <label for="sequential_cluster">Swipe through sequential cluster frames</label>
         </div>
 
     </form>
@@ -274,6 +286,8 @@
                 };
             });
 
+            var selectedRadioValue = document.querySelector('input[name="return"]:checked').value;
+
             var infoDiv = document.getElementById('plot-info');
             infoDiv.innerHTML = '';
 
@@ -287,7 +301,10 @@
             $.ajax({
                 url: '/process_click_data',
                 type: 'POST',
-                data: JSON.stringify(clickInfo),
+                data: JSON.stringify({
+                    clickData: clickInfo,
+                    radioButtonValue: selectedRadioValue  
+                }),
                 contentType: 'application/json',
                 success: function(response) {
                     console.log('Click data sent successfully:', response);
@@ -307,6 +324,10 @@
                             frameNumber.className = 'frame-number';
                             frameNumber.textContent = 'Frame: ' + response.frames[index];
 
+                            var assignment = document.createElement('div');
+                            assignment.className = 'frame-assignment';
+                            assignment.textContent = 'Assignment: ' + response.assignments[index];
+
                             var frameImage = document.createElement('img');
                             frameImage.src = 'data:image/jpeg;base64,' + frameData;
                             frameImage.style.width = '100%'; // Full width of the slide
@@ -314,6 +335,7 @@
 
                             zoomContainer.appendChild(frameImage);
                             slide.appendChild(frameNumber);
+                            slide.appendChild(assignment);
                             slide.appendChild(zoomContainer);
                             swiperWrapper.appendChild(slide); // Append the slide to the swiper wrapper
                         });
@@ -351,6 +373,9 @@
                 }
             });
         }) 
+
+      
+
     </script>
 </body>
 </html>

@@ -143,8 +143,8 @@ def compute(processed_input_data, file_j_df_array, framerate):
         for m in range(0, len(f)):
             f_integrated = np.zeros(len(processed_input_data[m]))
             for k in range(round(framerate / 10), len(f[m][0]), round(framerate / 10)):
-                frame_number.append(k)
-                frame_mapping.append(file_j_df_array[k+2][0])
+                frame_number.append(k-1)
+                frame_mapping.append(file_j_df_array[k-1+2][0])
                 if k > round(framerate / 10):
                     f_integrated = np.concatenate(
                         (f_integrated.reshape(f_integrated.shape[0], f_integrated.shape[1]),

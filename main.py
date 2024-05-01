@@ -118,9 +118,12 @@ def get_folders():
 
 @app.route('/process_click_data', methods=['POST'])
 def process_click_data():
-    click_data = request.get_json()
+    data = request.get_json()
+    click_data = data['clickData']
+    radio_button_value = data['radioButtonValue']
     frame_mapping = int(click_data[0]['frame_mapping']) if click_data else None
     frame_number = int(click_data[0]['frame_number'])
+    frame_assignment = int(click_data[0]['assignment'])
 
     if frame_mapping is not None:
         
@@ -132,8 +135,9 @@ def process_click_data():
                 csvfilepath = session_data.csv_path
                 mp4filepath = session_data.mp4_path
                 keypoints = session_data.keypoints
-                #mapping = np.array(session_data.sampled_frame_mapping_filtered)
-                #number = np.array(session_data.sampled_frame_number_filtered)
+                mappings = np.array(session_data.sampled_frame_mapping_filtered)
+                numbers = np.array(session_data.sampled_frame_number_filtered)
+                assignments = np.array(session_data.assignments_filtered)
 
         file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
         file_j_df_array = np.array(file_j_df)
@@ -142,6 +146,7 @@ def process_click_data():
             mp4 = cv2.VideoCapture(mp4filepath)
             frame_images = []
             frames = []
+            frame_assignments = []
 
             frame_numbers = []
             frame_mappings = []
@@ -149,13 +154,43 @@ def process_click_data():
             window = 5
 
             #start_mapping = np.where(frame_mapping==mapping)
+            if radio_button_value == 'single':
+                frame_numbers.append(frame_number)
+                frame_mappings.append(frame_mapping)
+                frame_assignments.append(frame_assignment)
             
-            for i in range(frame_number-window, frame_number+window+1):
-                frame_numbers.append(i)
-                
-            for j in range(frame_mapping-window, frame_mapping+window+1):
-                frame_mappings.append(j)
+            elif radio_button_value == 'sequential_mp4':
+                for i in range(frame_number-window, frame_number+window+1):
+                    frame_numbers.append(i)   
+                for j in range(frame_mapping-window, frame_mapping+window+1):
+                    frame_mappings.append(j)
+                    if j in mappings:
+                        index = np.where(mappings==j)[0][0]
+                        frame_assignments.append(int(assignments[index]))
+                    else: 
+                        frame_assignments.append('')
 
+            elif radio_button_value == 'sequential_cluster':
+                indeces = np.where(assignments==frame_assignment)
+                
+                frame_numbers_unsorted = numbers[indeces]
+                frame_mappings_unsorted = mappings[indeces]
+                frame_assignments_unsorted = assignments[indeces]
+                sort_indices = np.argsort(frame_mappings_unsorted)
+                frame_numbers_sorted = frame_numbers_unsorted[sort_indices]
+                frame_mappings_sorted = frame_mappings_unsorted[sort_indices]
+                frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
+
+                index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
+              
+                frame_numbers = frame_numbers_sorted[index-window:index+window+1] 
+                frame_mappings = frame_mappings_sorted[index-window:index+window+1]
+                frame_assignments = frame_assignments_sorted[index-window:index+window+1]
+
+                frame_numbers = frame_numbers.tolist()
+                frame_mappings = frame_mappings.tolist()
+                frame_assignments = frame_assignments.tolist()
+                
             for k in range(len(frame_numbers)):
                 mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
                 ret, frame = mp4.read()
@@ -174,16 +209,14 @@ def process_click_data():
                         for point in xy: 
                             cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
                     
-                    
                     _, buffer = cv2.imencode('.jpg', frame)
                     frame_data = base64.b64encode(buffer).decode('utf-8')
                     frame_images.append(frame_data)
                     frames.append(frame_mappings[k])
-                    
+                  
             mp4.release()
 
-        return jsonify({'frame_data': frame_images, 'frames': frames})
-
+        return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])
