@@ -121,112 +121,110 @@ def process_click_data():
     data = request.get_json()
     click_data = data['clickData']
     radio_button_value = data['radioButtonValue']
-    frame_mapping = int(click_data[0]['frame_mapping']) if click_data else None
-    frame_number = int(click_data[0]['frame_number'])
-    frame_assignment = int(click_data[0]['assignment'])
+    
+    session['last_click_info'] = click_data
 
-    if frame_mapping is not None:
-        
-        session_data_id = session.get('session_data_id')
+    if click_data: 
+        frame_mapping = int(click_data[0]['frame_mapping']) if click_data else None
+        frame_number = int(click_data[0]['frame_number'])
+        frame_assignment = int(click_data[0]['assignment'])
 
-        if session_data_id:
-            session_data = SessionData.query.get(session_data_id)
-            if session_data:
-                csvfilepath = session_data.csv_path
-                mp4filepath = session_data.mp4_path
-                keypoints = session_data.keypoints
-                mappings = np.array(session_data.sampled_frame_mapping_filtered)
-                numbers = np.array(session_data.sampled_frame_number_filtered)
-                assignments = np.array(session_data.assignments_filtered)
-
-        file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
-        file_j_df_array = np.array(file_j_df)
-
-        if mp4filepath is not None:
-            mp4 = cv2.VideoCapture(mp4filepath)
-            frame_images = []
-            frames = []
-            frame_assignments = []
-
-            frame_numbers = []
-            frame_mappings = []
+        if frame_mapping is not None:
             
-            window = 5
+            session_data_id = session.get('session_data_id')
 
-            #start_mapping = np.where(frame_mapping==mapping)
-            if radio_button_value == 'single':
-                window = 0
-                frame_numbers.append(frame_number)
-                frame_mappings.append(frame_mapping)
-                frame_assignments.append(frame_assignment)
-            
-            elif radio_button_value == 'sequential_mp4':
-                for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
-                    frame_numbers.append(i)   
-                for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
-                    frame_mappings.append(j)
-                    if j in mappings:
-                        index = np.where(mappings==j)[0][0]
-                        frame_assignments.append(int(assignments[index]))
-                    else: 
-                        frame_assignments.append('')
+            if session_data_id:
+                session_data = SessionData.query.get(session_data_id)
+                if session_data:
+                    csvfilepath = session_data.csv_path
+                    mp4filepath = session_data.mp4_path
+                    keypoints = session_data.keypoints
+                    mappings = np.array(session_data.sampled_frame_mapping_filtered)
+                    numbers = np.array(session_data.sampled_frame_number_filtered)
+                    assignments = np.array(session_data.assignments_filtered)
 
-                print("FRAME NUMBERS")
-                print(frame_numbers)
+            file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+            file_j_df_array = np.array(file_j_df)
 
-                print("FRAME ASSIGNMENTS")
-                print(frame_assignments)
+            if mp4filepath is not None:
+                mp4 = cv2.VideoCapture(mp4filepath)
+                frame_images = []
+                frames = []
+                frame_assignments = []
 
-            elif radio_button_value == 'sequential_cluster':
-                indeces = np.where(assignments==frame_assignment)
+                frame_numbers = []
+                frame_mappings = []
                 
-                frame_numbers_unsorted = numbers[indeces]
-                frame_mappings_unsorted = mappings[indeces]
-                frame_assignments_unsorted = assignments[indeces]
-                sort_indices = np.argsort(frame_mappings_unsorted)
-                frame_numbers_sorted = frame_numbers_unsorted[sort_indices]
-                frame_mappings_sorted = frame_mappings_unsorted[sort_indices]
-                frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
+                window = 5
 
-                index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
-
-                start_index = max(0, index - window)
-                end_index = min(len(frame_numbers_sorted), index + window + 1)
-              
-                frame_numbers = frame_numbers_sorted[start_index:end_index]
-                frame_mappings = frame_mappings_sorted[start_index:end_index]
-                frame_assignments = frame_assignments_sorted[start_index:end_index]
-
-                frame_numbers = frame_numbers.tolist()
-                frame_mappings = frame_mappings.tolist()
-                frame_assignments = frame_assignments.tolist()
+                #start_mapping = np.where(frame_mapping==mapping)
+                if radio_button_value == 'single':
+                    window = 0
+                    frame_numbers.append(frame_number)
+                    frame_mappings.append(frame_mapping)
+                    frame_assignments.append(frame_assignment)
                 
-            for k in range(len(frame_numbers)):
-                mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
-                ret, frame = mp4.read()
+                elif radio_button_value == 'sequential_mp4':
+                    for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
+                        frame_numbers.append(i)   
+                    for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
+                        frame_mappings.append(j)
+                        if j in mappings:
+                            index = np.where(mappings==j)[0][0]
+                            frame_assignments.append(int(assignments[index]))
+                        else: 
+                            frame_assignments.append('')
 
-                if ret: 
-                    if keypoints:
-
-                        keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mappings[k]))][0]
-
-                        x = keypoint_data[1::3] 
-                        y = keypoint_data[2::3]
-
-                        xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
-                        xy = [(int(float(x)), int(float(y))) for x, y in xy]
-
-                        for point in xy: 
-                            cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
+                elif radio_button_value == 'sequential_cluster':
+                    indeces = np.where(assignments==frame_assignment)
                     
-                    _, buffer = cv2.imencode('.jpg', frame)
-                    frame_data = base64.b64encode(buffer).decode('utf-8')
-                    frame_images.append(frame_data)
-                    frames.append(frame_mappings[k])
-                  
-            mp4.release()
+                    frame_numbers_unsorted = numbers[indeces]
+                    frame_mappings_unsorted = mappings[indeces]
+                    frame_assignments_unsorted = assignments[indeces]
+                    sort_indices = np.argsort(frame_mappings_unsorted)
+                    frame_numbers_sorted = frame_numbers_unsorted[sort_indices]
+                    frame_mappings_sorted = frame_mappings_unsorted[sort_indices]
+                    frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
 
-        return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': window})
+                    index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
+
+                    start_index = max(0, index - window)
+                    end_index = min(len(frame_numbers_sorted), index + window + 1)
+                
+                    frame_numbers = frame_numbers_sorted[start_index:end_index]
+                    frame_mappings = frame_mappings_sorted[start_index:end_index]
+                    frame_assignments = frame_assignments_sorted[start_index:end_index]
+
+                    frame_numbers = frame_numbers.tolist()
+                    frame_mappings = frame_mappings.tolist()
+                    frame_assignments = frame_assignments.tolist()
+                    
+                for k in range(len(frame_numbers)):
+                    mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
+                    ret, frame = mp4.read()
+
+                    if ret: 
+                        if keypoints:
+
+                            keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mappings[k]))][0]
+
+                            x = keypoint_data[1::3] 
+                            y = keypoint_data[2::3]
+
+                            xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                            xy = [(int(float(x)), int(float(y))) for x, y in xy]
+
+                            for point in xy: 
+                                cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
+                        
+                        _, buffer = cv2.imencode('.jpg', frame)
+                        frame_data = base64.b64encode(buffer).decode('utf-8')
+                        frame_images.append(frame_data)
+                        frames.append(frame_mappings[k])
+                    
+                mp4.release()
+
+            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': window})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])
@@ -243,15 +241,6 @@ def home():
     nameform = NameForm()
     loadnameform = LoadNameForm()
     form_submitted = False
-
-    # if 'parameters' in session:
-    #     form_data = session['parameterform']
-    #     parameterform.fps.data = form_data.get('fps')
-    #     parameterform.umap_min_dist.data = form_data.get('umap_min_dist')
-    #     parameterform.umap_random_state.data = form_data.get('umap_random_state')
-    #     parameterform.hdbscan_min_samples.data = form_data.get('hdbscan_min_samples')
-    #     parameterform.hdbscan_cluster_min.data = form_data.get('hdbscan_cluster_min')
-    #     parameterform.hdbscan_cluster_max.data = form_data.get('hdbscan_cluster_max')
 
     if uploadform.validate_on_submit() and uploadform.upload.data: 
         

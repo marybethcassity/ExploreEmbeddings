@@ -190,30 +190,35 @@
     <div id="plot-info"></div>
 
     <script type="text/javascript">
-
         document.addEventListener('DOMContentLoaded', function() {
             const uploadForm = document.getElementById('uploadForm');
             const loadPlotCheckbox = document.getElementById('loadPlotCheckbox');
-
-        var checkbox = document.getElementById('loadPlotCheckbox');
-        toggleFieldsVisibility();  // Set initial visibility based on checkbox state
-        checkbox.addEventListener('change', toggleFieldsVisibility);
-    });
-
-    function toggleFieldsVisibility() {
-        var checkbox = document.getElementById('loadPlotCheckbox');
-
-        if (checkbox.checked) {
-            document.getElementById('additionalOptions').style.display = 'none'; // Hide additionalOptions
-            document.getElementById('additionalOptions2').style.display = 'block';
-        } else {
-            document.getElementById('additionalOptions').style.display = 'block'; // Show additionalOptions
-            document.getElementById('additionalOptions2').style.display = 'none';
-        }
-    }   
+            var checkbox = document.getElementById('loadPlotCheckbox');
+            toggleFieldsVisibility();  // Set initial visibility based on checkbox state
+            checkbox.addEventListener('change', toggleFieldsVisibility);
+            
+            document.getElementById('folderInput').addEventListener('change', updateFolderList);
+            const fraction = document.querySelector('#{{ fractionform.slider.id }}');
+            const display = document.getElementById('fractionValue');
+            display.textContent = fraction.value;
     
-    document.getElementById('folderInput').addEventListener('change', updateFolderList);
-
+            fraction.oninput = function() {
+                display.textContent = this.value;
+            };
+    
+            const minField = document.getElementById('{{ parameterform.hdbscan_cluster_min.id }}');
+            const maxField = document.getElementById('{{ parameterform.hdbscan_cluster_max.id }}');
+            [minField, maxField].forEach(field => field.addEventListener('input', updateConstraints));
+    
+            initPlot();
+        });
+    
+        function toggleFieldsVisibility() {
+            var checkbox = document.getElementById('loadPlotCheckbox');
+            document.getElementById('additionalOptions').style.display = checkbox.checked ? 'none' : 'block';
+            document.getElementById('additionalOptions2').style.display = checkbox.checked ? 'block' : 'none';
+        }   
+        
         function updateFolderList() {
             var path = document.getElementById('folderInput').value;
             fetch('/get_folders', {
@@ -226,156 +231,137 @@
             .then(response => response.json())
             .then(data => {
                 var select = document.getElementById('folderList');
-                select.innerHTML = ''; // Clear existing options
-                data.forEach(function(folder) {
-                    var option = new Option(folder, folder);
-                    select.options.add(option);
-                });
+                select.innerHTML = '';
+                data.forEach(folder => select.options.add(new Option(folder, folder)));
             })
             .catch(error => console.error('Error fetching folders:', error));
         }
-
-        const fraction = document.querySelector('#{{ fractionform.slider.id }}');
-        const display = document.getElementById('fractionValue');
-        display.textContent = fraction.value
-
-        fraction.oninput = function() {
-        display.textContent = this.value;
-        }
-
-        const minField = document.getElementById('{{ parameterform.hdbscan_cluster_min.id }}');
-        const maxField = document.getElementById('{{ parameterform.hdbscan_cluster_max.id }}');
-
-        // Function to update constraints
+    
         function updateConstraints() {
-            const minValue = parseFloat(minField.value); // Get the current value of hdbscan_cluster_min
-            const maxValue = parseFloat(maxField.value); // Get the current value of hdbscan_eps_max
-
-            // Set the min attribute of hdbscan_cluster_max to ensure it's not less than hdbscan_cluster_min
+            const minValue = parseFloat(minField.value);
+            const maxValue = parseFloat(maxField.value);
             maxField.min = minValue;
-
-            // If the current max is less than the new min, adjust it to match the min
             if (maxValue < minValue) {
                 maxField.value = minValue;
             }
         }
-
-        // Attach event listeners to both fields
-        [minField, maxField].forEach(field => field.addEventListener('input', updateConstraints));
-
-        // Initial constraint update on page load
-        updateConstraints();
-            
-        var graph = {{graphJSON | safe}};
-            console.log(graph); 
+    
+        var lastClickData = null;
+    
+        function initPlot() {
+            var graph = {{graphJSON | safe}};
             if (graph) {
                 Plotly.newPlot('graph', graph, {});
-                // Show the radio button when the plot is available
                 document.getElementById('radioControl').style.display = 'block';
+                var plotDiv = document.getElementById('graph');
+                plotDiv.on('plotly_click', function(data) {
+                    lastClickData = data.points;
+                    processPlotClick(data.points);
+                });
+    
+                document.querySelectorAll('input[name="return"]').forEach(radioButton => {
+                    radioButton.addEventListener('change', () => {
+                        if (lastClickData) {
+                            processPlotClick(lastClickData);
+                        }
+                    });
+                });
             }
-            var plotDiv = document.getElementById('graph');
-        plotDiv.on('plotly_click', function(data) {
-            var clickInfo = data.points.map(function(point) {
-                return {
-                    'x': point.x,
-                    'y': point.y,
-                    'z': point.z,
-                    'frame_mapping': point.customdata[0],
-                    'frame_number': point.customdata[1],
-                    'assignment': point.customdata[2]
-                };
-            });
-
+        }
+    
+        function processPlotClick(points) {
+            var clickInfo = points.map(point => ({
+                'x': point.x,
+                'y': point.y,
+                'z': point.z,
+                'frame_mapping': point.customdata[0],
+                'frame_number': point.customdata[1],
+                'assignment': point.customdata[2]
+            }));
+    
             var selectedRadioValue = document.querySelector('input[name="return"]:checked').value;
-
+            updateInfoDisplay(clickInfo);
+            sendClickDataToServer(clickInfo, selectedRadioValue);
+        }
+    
+        function updateInfoDisplay(clickInfo) {
             var infoDiv = document.getElementById('plot-info');
             infoDiv.innerHTML = '';
-
-            clickInfo.forEach(function(info) {
+            clickInfo.forEach(info => {
                 var infoElement = document.createElement('p');
-                infoElement.textContent = 'x: ' + info.x.toFixed(3) + ', y: ' + info.y.toFixed(3) + ', z: ' + info.z.toFixed(3) +
-                                      ', mapped frame: ' + info.frame_mapping + ', mp4 frame: ' + info.frame_number + ', assignment: ' + info.assignment;
+                infoElement.textContent = `x: ${info.x.toFixed(3)}, y: ${info.y.toFixed(3)}, z: ${info.z.toFixed(3)},
+                                           mapped frame: ${info.frame_mapping}, mp4 frame: ${info.frame_number}, assignment: ${info.assignment}`;
                 infoDiv.appendChild(infoElement);
-            }); 
-
+            });
+        }
+    
+        function sendClickDataToServer(clickInfo, radioButtonValue) {
             $.ajax({
                 url: '/process_click_data',
                 type: 'POST',
                 data: JSON.stringify({
                     clickData: clickInfo,
-                    radioButtonValue: selectedRadioValue  
+                    radioButtonValue: radioButtonValue
                 }),
                 contentType: 'application/json',
                 success: function(response) {
                     console.log('Click data sent successfully:', response);
-
-                    var swiperWrapper = document.querySelector('.swiper-wrapper');
-                    swiperWrapper.innerHTML = ''; // Clear existing slides
-
-                    if (response.frame_data && response.frame_data.length > 0) {
-                        response.frame_data.forEach(function(frameData, index) {
-                            var slide = document.createElement('div');
-                            slide.className = 'swiper-slide';
-
-                            var zoomContainer = document.createElement('div');
-                            zoomContainer.className = 'swiper-zoom-container';
-
-                            var frameNumber = document.createElement('div');
-                            frameNumber.className = 'frame-number';
-                            frameNumber.textContent = 'Frame: ' + response.frames[index];
-
-                            var assignment = document.createElement('div');
-                            assignment.className = 'frame-assignment';
-                            assignment.textContent = 'Assignment: ' + response.assignments[index];
-
-                            var frameImage = document.createElement('img');
-                            frameImage.src = 'data:image/jpeg;base64,' + frameData;
-                            frameImage.style.width = '100%'; // Full width of the slide
-                            frameImage.style.height = 'auto'; // Maintain aspect ratio
-
-                            zoomContainer.appendChild(frameImage);
-                            slide.appendChild(frameNumber);
-                            slide.appendChild(assignment);
-                            slide.appendChild(zoomContainer);
-                            swiperWrapper.appendChild(slide); // Append the slide to the swiper wrapper
-                        });
-
-                        var middleIndex = response.middle_index;
-
-                        // Initialize or update Swiper
-
-                        if (window.mySwiper) {
-                            window.mySwiper.destroy(true, true);
-                        }
-                        window.mySwiper = new Swiper('.swiper-container', {
-                            loop: false,
-                            navigation: {
-                                nextEl: '.swiper-button-next',
-                                prevEl: '.swiper-button-prev',
-                            },
-                            zoom: {
-                                enabled: true,
-                                maxRatio: 5,  // Maximum zoom ratio
-                                minRatio: 1,  // Minimum zoom ratio (default scale)
-                            },
-                            initialSlide: middleIndex
-                            });
-                       
-                        window.mySwiper.update(); // Update Swiper if already initialized
-                        frameNumberContainer.textContent = 'Frame Number: ' + response.frames[window.mySwiper.activeIndex];
-                    
-                    } else {
-                        console.error("No images returned from the server.");
-                    }
+                    updateSwiper(response);
                 },
                 error: function(error) {
                     console.error('Error sending click data:', error);
                 }
             });
-        }) 
-
-      
-
+        }
+    
+        function updateSwiper(response) {
+            var swiperWrapper = document.querySelector('.swiper-wrapper');
+            swiperWrapper.innerHTML = '';  // Clear existing slides
+    
+            if (response.frame_data && response.frame_data.length > 0) {
+                response.frame_data.forEach(function(frameData, index) {
+                    var slide = document.createElement('div');
+                    slide.className = 'swiper-slide';
+                    var zoomContainer = document.createElement('div');
+                    zoomContainer.className = 'swiper-zoom-container';
+                    var frameNumber = document.createElement('div');
+                    frameNumber.className = 'frame-number';
+                    frameNumber.textContent = 'Frame: ' + response.frames[index];
+                    var assignment = document.createElement('div');
+                    assignment.className = 'frame-assignment';
+                    assignment.textContent = 'Assignment: ' + response.assignments[index];
+                    var frameImage = document.createElement('img');
+                    frameImage.src = 'data:image/jpeg;base64,' + frameData;
+                    frameImage.style.width = '100%';
+                    frameImage.style.height = 'auto';
+                    zoomContainer.appendChild(frameImage);
+                    slide.appendChild(frameNumber);
+                    slide.appendChild(assignment);
+                    slide.appendChild(zoomContainer);
+                    swiperWrapper.appendChild(slide);
+                });
+    
+                if (window.mySwiper) {
+                    window.mySwiper.destroy(true, true);
+                }
+                window.mySwiper = new Swiper('.swiper-container', {
+                    loop: false,
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                    zoom: {
+                        enabled: true,
+                        maxRatio: 5,
+                        minRatio: 1,
+                    },
+                    initialSlide: response.middle_index
+                });
+                window.mySwiper.update();
+            } else {
+                console.error("No images returned from the server.");
+            }
+        }
     </script>
 </body>
 </html>
