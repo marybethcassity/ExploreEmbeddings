@@ -18,8 +18,8 @@
 
         #graph {
             flex: 1; /* Allows each child to grow equally */
-            width: 3840/2px; /* Adjust the width as needed */   
-            height: 2160/2px;
+            width: 3840/2; /* Adjust the width as needed */   
+            height: 2160/2;
         }
         
         #frame-container {
@@ -276,7 +276,9 @@
                 'z': point.z,
                 'frame_mapping': point.customdata[0],
                 'frame_number': point.customdata[1],
-                'assignment': point.customdata[2]
+                'assignment': point.customdata[2],
+                'basename': point.customdata[3],
+                'csv': point.customdata[4]
             }));
     
             var selectedRadioValue = document.querySelector('input[name="return"]:checked').value;
@@ -289,7 +291,7 @@
             infoDiv.innerHTML = '';
             clickInfo.forEach(info => {
                 var infoElement = document.createElement('p');
-                infoElement.textContent = `x: ${info.x.toFixed(3)}, y: ${info.y.toFixed(3)}, z: ${info.z.toFixed(3)},
+                infoElement.textContent = `x: ${info.x.toFixed(3)}, y: ${info.y.toFixed(3)}, z: ${info.z.toFixed(3)}, basename: ${info.basename},
                                            mapped frame: ${info.frame_mapping}, mp4 frame: ${info.frame_number}, assignment: ${info.assignment}`;
                 infoDiv.appendChild(infoElement);
             });

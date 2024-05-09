@@ -180,7 +180,7 @@ def compute(processed_input_data, file_j_df_array, framerate):
         return scaled_features, features, frame_mapping, frame_number
 
 # bsoid_app/extract_features.py # edited
-def subsample(processed_input_data, framerate, training_fraction):
+def subsample(processed_input_data, framerate, training_fraction, scaled_features, frame_mapping, frame_number):
         data_size = 0
         for n in range(len(processed_input_data)):
             data_size += len(range(round(framerate / 10), processed_input_data[n].shape[0],
@@ -194,35 +194,73 @@ def subsample(processed_input_data, framerate, training_fraction):
             train_size = int(data_size * fraction)
         #st.markdown('You have opted to train on a cumulative of **{} minutes** total. '
         #            'If this does not sound right, the framerate might be wrong.'.format(train_size / 600))
-        return train_size
-    
-# bsoid_app/extract_features.py # edited
-def learn_embeddings(scaled_features, features, UMAP_PARAMS, train_size, frame_mapping, frame_number):
-    input_feats = scaled_features.T
 
-    pca = PCA()
-    pca.fit(scaled_features.T)
-    num_dimensions = np.argwhere(np.cumsum(pca.explained_variance_ratio_) >= 0.7)[0][0] + 1
-    if train_size > input_feats.shape[0]:
-        train_size = input_feats.shape[0]
-    np.random.seed(0)
-    
-    random_choice = np.random.choice(input_feats.shape[0], train_size, replace=False)
-    sampled_input_feats = input_feats[random_choice]
-    sampled_frame_mapping = frame_mapping[random_choice]
-    sampled_frame_number = frame_number[random_choice]
+        input_feats = scaled_features.T
+
+        if train_size > input_feats.shape[0]:
+            train_size = input_feats.shape[0]
+
+        np.random.seed(0)
+        random_choice = np.random.choice(input_feats.shape[0], train_size, replace=False)
+        
+        sampled_input_feats = input_feats[random_choice]
+        sampled_frame_mapping = frame_mapping[random_choice]
+        sampled_frame_number = frame_number[random_choice]
+
+        return sampled_input_feats, sampled_frame_mapping, sampled_frame_number
 
     # features_transposed = features.T
     # np.random.seed(0)
     # sampled_features = features_transposed[np.random.choice(features_transposed.shape[0],
     #                                                                     train_size, replace=False)]
+    
+# bsoid_app/extract_features.py # edited
+def learn_embeddings(UMAP_PARAMS, data):
 
+    scaled_features_list = []
+    sampled_input_feats_list = []
+    
+    basename_mappings = []
+    csv_mappings = []
+    frame_mappings = []
+    frame_numbers = []
+
+    basename_indices = []
+    for basename, content in data['files'].items():
+
+        sampled_input_feats_list.append(content['sampled_input_feats'])
+        scaled_features_list.append(content['scaled_features'])
+        
+        csv_name = os.path.basename(content["csv_path"])
+
+        num_samples = len(content['sampled_input_feats'])
+        basename_repeated = [basename] * num_samples
+        csv_name_repeated = [csv_name] * num_samples
+
+        basename_mappings.extend(basename_repeated)
+        csv_mappings.extend(csv_name_repeated)
+        frame_mappings.extend(content['sampled_frame_mapping'])
+        frame_numbers.extend(content['sampled_frame_number'])
+    
+    concatenated_sampled_features = np.vstack(sampled_input_feats_list)
+    concatenated_scaled_features = np.vstack(scaled_features_list)
+
+    pca = PCA()
+    pca.fit(concatenated_scaled_features.T)
+    num_dimensions = np.argwhere(np.cumsum(pca.explained_variance_ratio_) >= 0.7)[0][0] + 1
+   
     learned_embeddings = UMAP(n_neighbors=60, n_components=num_dimensions,
-                                                **UMAP_PARAMS).fit(sampled_input_feats)
+                                                **UMAP_PARAMS).fit(concatenated_sampled_features)
 
     sampled_embeddings = learned_embeddings.embedding_
 
-    return sampled_embeddings, sampled_frame_mapping, sampled_frame_number
+    current_index = 0
+    for basename, count in basename_indices:
+        # Slice the learned embeddings using the count
+        data['files'][basename]['sampled_embeddings'] = sampled_embeddings[current_index:current_index + count]
+        current_index += count
+
+    return sampled_embeddings, data, basename_mappings, csv_mappings, frame_mappings, frame_numbers
 
 # bsoid_app/clustering.py # edited 
 def hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS):
@@ -243,7 +281,10 @@ def hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS):
     assign_prob = hdbscan.all_points_membership_vectors(retained_hierarchy)
     soft_assignments = np.argmax(assign_prob, axis=1)
 
-    return assignments 
+    current_index = 0
+
+    return assignments
+
 
 # bsoid_app/bsoid_utilities/visuals.py
 #def plot_classes(data, assignments):
@@ -271,38 +312,47 @@ def plot_classes(sampled_embeddings, assignments, file):
     plt.legend(ncol=3, markerscale=6)
     return fig
 
-def create_plotly(sampled_embeddings_filtered, assignments_filtered, file, sampled_frame_mapping_filtered, sampled_frame_number_filtered):
-    uk = list(np.unique(assignments_filtered))
-    umap_x, umap_y, umap_z = sampled_embeddings_filtered[:, 0], sampled_embeddings_filtered[:, 1], sampled_embeddings_filtered[:, 2]
-    
-    text = [f"Frame: {frame}" for frame in sampled_frame_mapping_filtered]
+def create_plotly(sampled_embeddings, assignments, frame_mappings, frame_numbers, basename_mappings, csv_mappings):
+    # Initialize lists to hold all the frame mappings, frame numbers, and basenames
+    all_frame_mapping = []
+    all_frame_number = []
+    all_basename = []
 
-    unique_assignments = np.unique(assignments_filtered)
-    num_unique_assignments = len(unique_assignments)
+    # Aggregate frame mappings and numbers for each basename in the data dictionary
+    # for basename, info in data.items():
+    #     num_points = len(info['sampled_frame_mapping'])
+    #     all_frame_mapping.extend(info['sampled_frame_mapping'])
+    #     all_frame_number.extend(info['sampled_frame_number'])
+    #     all_basename.extend([basename] * num_points)
 
+    # Create the DataFrame including basenames
     df = pd.DataFrame({
-        'x': sampled_embeddings_filtered[:, 0],
-        'y': sampled_embeddings_filtered[:, 1],  
-        'z': sampled_embeddings_filtered[:, 2],
-        'assignments': assignments_filtered.astype(str),
-        'frame_mapping': sampled_frame_mapping_filtered, 
-        'frame_number': sampled_frame_number_filtered
+        'x': sampled_embeddings[:, 0],
+        'y': sampled_embeddings[:, 1],
+        'z': sampled_embeddings[:, 2],
+        'assignments': assignments.astype(str),
+        'frame_mappings': frame_mappings,
+        'frame_numbers': frame_numbers,
+        'basenames': basename_mappings,
+        'csvs': csv_mappings
     })
 
-    colors = []
-    for _ in range(num_unique_assignments):
-        color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-        colors.append(color)
+    # Create a unique color for each cluster assignment
+    unique_assignments = np.unique(assignments)
+    num_unique_assignments = len(unique_assignments)
+    colors = ["#{:06x}".format(random.randint(0, 0xFFFFFF)) for _ in range(num_unique_assignments)]
 
+    # Create the 3D scatter plot with Plotly
     fig = px.scatter_3d(df, x='x', y='y', z='z', color='assignments',
                         labels={'assignments': 'Assignment'},
-                        custom_data=['frame_mapping', 'frame_number', 'assignments'], 
+                        custom_data=['frame_mappings', 'frame_numbers', 'assignments', 'basenames', 'csvs'],
                         color_discrete_sequence=colors)
 
+    # Customize marker size and hover template
     fig.update_traces(marker_size=1)
-
     fig.update_traces(hovertemplate="<br>".join([
-    "Frame: %{customdata[0]}"
+        "Frame: %{customdata[0]}",
+        "Basename: %{customdata[3]}"
     ]))
 
     return fig

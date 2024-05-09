@@ -39,16 +39,29 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+#  session_data = SessionData(
+#             folder_path=folder_path,
+#             assignments=assignments,
+#             frame_numbers=frame_numbers,
+#             frame_mappings=frame_mappings,
+#             basename_mappings = basename_mappings,
+#             csv_mappings = csv_mappings,
+#             keypoints=keypoints,
+#             name = name
+#         )
+
 class SessionData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     folder_path = db.Column(db.String(500))
     csv_path = db.Column(db.String(500))
     mp4_path = db.Column(db.String(500))
-    assignments_filtered = db.Column(db.PickleType)
-    sampled_frame_number_filtered = db.Column(db.PickleType)
-    sampled_frame_mapping_filtered = db.Column(db.PickleType)
+    assignments = db.Column(db.PickleType)
+    frame_numbers = db.Column(db.PickleType)
+    frame_mappings = db.Column(db.PickleType)
     keypoints = db.Column(db.Boolean)
     name = db.Column(db.String(500))
+    basename_mappings = db.Column(db.PickleType)
+    csv_mappings = db.Column(db.PickleType)
 
 with app.app_context():
     db.create_all()
@@ -128,6 +141,8 @@ def process_click_data():
         frame_mapping = int(click_data[0]['frame_mapping']) if click_data else None
         frame_number = int(click_data[0]['frame_number'])
         frame_assignment = int(click_data[0]['assignment'])
+        basename = str(click_data[0]['basename'])
+        csv_name = str(click_data[0]['csv'])
 
         if frame_mapping is not None:
             
@@ -136,12 +151,14 @@ def process_click_data():
             if session_data_id:
                 session_data = SessionData.query.get(session_data_id)
                 if session_data:
-                    csvfilepath = session_data.csv_path
-                    mp4filepath = session_data.mp4_path
+                    folder_path = session_data.folder_path 
                     keypoints = session_data.keypoints
-                    mappings = np.array(session_data.sampled_frame_mapping_filtered)
-                    numbers = np.array(session_data.sampled_frame_number_filtered)
-                    assignments = np.array(session_data.assignments_filtered)
+                    mappings = np.array(session_data.frame_mappings).astype(int)
+                    numbers = np.array(session_data.frame_numbers).astype(int)
+                    assignments = np.array(session_data.assignments).astype(int)
+
+            csvfilepath = os.path.join(folder_path,csv_name)
+            mp4filepath = os.path.join(folder_path,basename+".mp4")
 
             file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
             file_j_df_array = np.array(file_j_df)
@@ -251,7 +268,6 @@ def home():
         keypoints = keypointform.keypoints.data
         load_plot = plotlyform.load_plot.data
     
-        
         if load_plot: 
             name = loadnameform.loadname.data
             
@@ -274,10 +290,13 @@ def home():
                         graphJSON = f.read()
 
                 elif filename == 'data.csv':
+
                     data = pd.read_csv(os.path.join(folder_path,name,filename))
-                    sampled_frame_mapping_filtered = data["mapping"]
-                    sampled_frame_number_filtered = data["frame_number"]
-                    assignments_filtered = data["assignments"]
+                    frame_mappings = data["mapping"]
+                    frame_numbers = data["frame_number"]
+                    assignments = data["assignments"]
+                    basenames = data["basenames"]
+                    csvs = data["csvs"]
                     fps = data["fps"][0]
                     UMAP_min = data["UMAP_min"][0]
                     UMAP_seed = data["UMAP_seed"][0]
@@ -314,17 +333,17 @@ def home():
 
             cluster_range = [min_cluster, max_cluster]
             
-            graphJSON, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, mp4filepath, csvfilepath = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
+            graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings  = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
         session_data = SessionData(
             folder_path=folder_path,
-            csv_path=csvfilepath,
-            mp4_path=mp4filepath,
-            assignments_filtered=assignments_filtered,
-            sampled_frame_number_filtered=sampled_frame_number_filtered,
-            sampled_frame_mapping_filtered=sampled_frame_mapping_filtered,
+            assignments=assignments,
+            frame_numbers=frame_numbers,
+            frame_mappings=frame_mappings,
             keypoints=keypoints,
-            name = name
+            name = name, 
+            basename_mappings = basenames, 
+            csv_mappings = csvs
         )
 
         db.session.add(session_data)
@@ -339,17 +358,17 @@ def home():
         if session_data_id:
             session_data = SessionData.query.get(session_data_id)
             if session_data:
-                csvfilepath = session_data.csv_path
-                mp4filepath = session_data.mp4_path
                 folder_path = session_data.folder_path
-                assignments_filtered = session_data.assignments_filtered
-                sampled_frame_number_filtered = session_data.sampled_frame_number_filtered
-                sampled_frame_mapping_filtered = session_data.sampled_frame_mapping_filtered
+                assignments = session_data.assignments
+                frame_numbers = session_data.frame_numbers
+                frame_mappings = session_data.frame_mappings
                 keypoints = session_data.keypoints
                 name = session_data.name
+                basename_mappings = session_data.basename_mappings
+                csv_mappings = session_data.csv_mappings
                 print("name:", name)
         
-        save_images(mp4filepath, csvfilepath, folder_path, sampled_frame_mapping_filtered, sampled_frame_number_filtered, assignments_filtered, keypoints, name)
+        save_images(folder_path, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, keypoints, name)
     
     return render_template('index.html', uploadform=uploadform, plotlyform=plotlyform, clusterform=clusterform, fractionform=fractionform, keypointform=keypointform, parameterform=parameterform, graphJSON = graphJSON, nameform=nameform, loadnameform=loadnameform)
 
