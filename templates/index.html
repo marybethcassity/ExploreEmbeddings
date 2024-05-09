@@ -97,9 +97,9 @@
         {{ uploadform.hidden_tag() }}
         {{ uploadform.csrf_token }}
        
-        <div> 
-            {{ uploadform.folder.label }} 
-            <input type="text" id="folderInput" name="folder" class="path-input-box" onchange="updateFolderList()">
+        <div>
+            {{ uploadform.folder.label }}
+            <input type="text" id="folderInput" name="folder" class="path-input-box" value="{{ uploadform.folder.data if uploadform.folder.data else '' }}" onchange="updateFolderList()">
         </div>
 
         <div> 
@@ -192,24 +192,56 @@
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function() {
             const uploadForm = document.getElementById('uploadForm');
+            const folderInput = document.getElementById('folderInput');
             const loadPlotCheckbox = document.getElementById('loadPlotCheckbox');
             var checkbox = document.getElementById('loadPlotCheckbox');
-            toggleFieldsVisibility();  // Set initial visibility based on checkbox state
+
+            // Toggle visibility of fields based on checkbox state
+            toggleFieldsVisibility();
             checkbox.addEventListener('change', toggleFieldsVisibility);
-            
-            document.getElementById('folderInput').addEventListener('change', updateFolderList);
+
+            // Attach event listener for manual path changes
+            folderInput.addEventListener('change', updateFolderList);
+
+            // Automatically call `updateFolderList` if the input already has a value
+            if (folderInput.value) {
+                updateFolderList();  // Populate the folder list dropdown
+            }
+
+            // Handle slider value display
             const fraction = document.querySelector('#{{ fractionform.slider.id }}');
             const display = document.getElementById('fractionValue');
             display.textContent = fraction.value;
-    
+            
             fraction.oninput = function() {
                 display.textContent = this.value;
             };
-    
+
+            // Attach event listeners for the clustering parameters
             const minField = document.getElementById('{{ parameterform.hdbscan_cluster_min.id }}');
             const maxField = document.getElementById('{{ parameterform.hdbscan_cluster_max.id }}');
-            [minField, maxField].forEach(field => field.addEventListener('input', updateConstraints));
-    
+
+            function validateAndAdjustLimits() {
+                let minValue = parseFloat(minField.value);
+                let maxValue = parseFloat(maxField.value);
+
+                // Ensure minValue does not exceed maxValue
+                if (minValue > maxValue) {
+                    maxField.value = minValue;
+                }
+
+                // Ensure maxValue does not go below minValue
+                if (maxValue < minValue) {
+                    minField.value = maxValue;
+                }
+            }
+
+            // Attach event listeners to both min and max fields
+            minField.addEventListener('input', validateAndAdjustLimits);
+            maxField.addEventListener('input', validateAndAdjustLimits);
+                    
+
+            // Initialize the plot visualization if applicable
             initPlot();
         });
     

@@ -272,6 +272,8 @@ def home():
             name = loadnameform.loadname.data
             
             parameterform = ParameterForm(formdata=None)
+            uploadform = UploadForm(formdata=None)
+            nameform = NameForm(formdata=None)
     
             for filename in os.listdir(folder_path):
                 if filename.endswith('.mp4'):
@@ -295,8 +297,8 @@ def home():
                     frame_mappings = data["mapping"]
                     frame_numbers = data["frame_number"]
                     assignments = data["assignments"]
-                    basenames = data["basenames"]
-                    csvs = data["csvs"]
+                    basename_mappings = data["basenames"]
+                    csv_mappings = data["csvs"]
                     fps = data["fps"][0]
                     UMAP_min = data["UMAP_min"][0]
                     UMAP_seed = data["UMAP_seed"][0]
@@ -310,6 +312,8 @@ def home():
                     parameterform.hdbscan_min_samples.data = HDBSCAN_samples
                     parameterform.hdbscan_cluster_min.data = HDBSCAN_min
                     parameterform.hdbscan_cluster_max.data = HDBSCAN_max
+                    uploadform.folder.data = folder_path
+                    nameform.name.data = name+"_copy"
 
         else: 
             
@@ -333,6 +337,8 @@ def home():
 
             cluster_range = [min_cluster, max_cluster]
             
+            nameform.name.data = name+"_copy"
+            
             graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings  = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
         session_data = SessionData(
@@ -342,8 +348,8 @@ def home():
             frame_mappings=frame_mappings,
             keypoints=keypoints,
             name = name, 
-            basename_mappings = basenames, 
-            csv_mappings = csvs
+            basename_mappings = basename_mappings, 
+            csv_mappings = csv_mappings
         )
 
         db.session.add(session_data)
