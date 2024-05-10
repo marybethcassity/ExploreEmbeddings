@@ -171,6 +171,7 @@ def process_click_data():
             frame_mappings = []
             frame_basenames = []
             frame_csvs = []
+            distances = []
             
             window = 5
 
@@ -243,7 +244,9 @@ def process_click_data():
                 index = np.where(mappings==frame_mapping)[0][0]
 
                 distances, indices = nn_model.kneighbors([embeddings[index]])
-                
+
+                distances = np.around(distances[0], decimals = 3).tolist()
+        
                 nearest_frames_numbers = [numbers[i] for i in indices[0]]
                 nearest_frames_mappings = [mappings[i] for i in indices[0]]
                 nearest_frames_assignments = [assignments[i] for i in indices[0]]
@@ -289,7 +292,7 @@ def process_click_data():
                     frames.append(frame_mappings[k])
                 
             mp4.release()
-            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'start_index': start_index, 'basenames': frame_basenames})
+            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'start_index': start_index, 'basenames': frame_basenames, 'distances': distances})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])

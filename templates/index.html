@@ -83,6 +83,16 @@
             z-index: 1; /* Add this line to ensure the frame number is on top of the image */
         }
 
+        .distance {
+            position: absolute; /* Position the frame number absolutely within the slide */
+            top: 130px; /* Adjust the vertical position as needed */
+            left: 10px; /* Adjust the horizontal position as needed */
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+            padding: 5px; /* Add some padding around the text */
+            font-weight: bold; /* Make the text bold for better visibility */
+            z-index: 1; /* Add this line to ensure the frame number is on top of the image */
+        }
+
         .small-input-box {
             width: 40px; /* Adjust the width as needed */
         }
@@ -379,6 +389,9 @@
                     var assignment = document.createElement('div');
                     assignment.className = 'frame-assignment';
                     assignment.textContent = 'Assignment: ' + response.assignments[index];
+                    var distance = document.createElement('div');
+                    distance.className = 'distance';
+                    distance.textContent = 'Distance: ' + response.distances[index];
                     var frameImage = document.createElement('img');
                     frameImage.src = 'data:image/jpeg;base64,' + frameData;
                     frameImage.style.width = '100%';
@@ -387,6 +400,7 @@
                     slide.appendChild(basename)
                     slide.appendChild(frameNumber);
                     slide.appendChild(assignment);
+                    slide.appendChild(distance)
                     slide.appendChild(zoomContainer);
                     swiperWrapper.appendChild(slide);
                 });
