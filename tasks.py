@@ -141,6 +141,8 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
 
     df.to_csv(os.path.join(folder_path, name, "data.csv"), index=False) 
 
+    np.save(os.path.join(folder_path, name, "embedding.npy"), sampled_embeddings)
+
     plot = create_plotly(sampled_embeddings, assignments, frame_mappings, frame_numbers, basename_mappings, csv_mappings)
     
     plot.write_html(os.path.join(folder_path, name,'plot.html'))
@@ -149,7 +151,7 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
     with open(os.path.join(folder_path, name,'plot.json'), 'w') as f:
         f.write(graphJSON)
 
-    return graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings
+    return graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, sampled_embeddings
 
 def save_images(folder_path, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, keypoints, name):
     

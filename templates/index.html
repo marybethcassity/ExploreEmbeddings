@@ -53,9 +53,19 @@
             object-fit: contain;
         }
 
-        .frame-number {
+        .basename {
             position: absolute; /* Position the frame number absolutely within the slide */
             top: 10px; /* Adjust the vertical position as needed */
+            left: 10px; /* Adjust the horizontal position as needed */
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+            padding: 5px; /* Add some padding around the text */
+            font-weight: bold; /* Make the text bold for better visibility */
+            z-index: 1; /* Add this line to ensure the frame number is on top of the image */
+        }
+
+        .frame-number {
+            position: absolute; /* Position the frame number absolutely within the slide */
+            top: 50px; /* Adjust the vertical position as needed */
             left: 10px; /* Adjust the horizontal position as needed */
             background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
             padding: 5px; /* Add some padding around the text */
@@ -65,7 +75,7 @@
         
         .frame-assignment {
             position: absolute; /* Position the frame number absolutely within the slide */
-            top: 50px; /* Adjust the vertical position as needed */
+            top: 90px; /* Adjust the vertical position as needed */
             left: 10px; /* Adjust the horizontal position as needed */
             background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
             padding: 5px; /* Add some padding around the text */
@@ -164,6 +174,8 @@
             <label for="sequential_mp4">Swipe through sequential mp4 frames</label>
             <input type="radio" id="sequential_cluster" name="return" value="sequential_cluster">
             <label for="sequential_cluster">Swipe through sequential cluster frames</label>
+            <input type="radio" id="embedded_space" name="return" value="embedded_space">
+            <label for="embedded_space">Swipe through the embedded space</label>
         </div>
 
     </form>
@@ -358,6 +370,9 @@
                     slide.className = 'swiper-slide';
                     var zoomContainer = document.createElement('div');
                     zoomContainer.className = 'swiper-zoom-container';
+                    var basename = document.createElement('div');
+                    basename.className = 'basename';
+                    basename.textContent = 'Basename: ' + response.basenames[index];
                     var frameNumber = document.createElement('div');
                     frameNumber.className = 'frame-number';
                     frameNumber.textContent = 'Frame: ' + response.frames[index];
@@ -369,6 +384,7 @@
                     frameImage.style.width = '100%';
                     frameImage.style.height = 'auto';
                     zoomContainer.appendChild(frameImage);
+                    slide.appendChild(basename)
                     slide.appendChild(frameNumber);
                     slide.appendChild(assignment);
                     slide.appendChild(zoomContainer);

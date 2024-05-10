@@ -16,6 +16,7 @@ import numpy as np
 import cv2
 import os
 import shutil
+from sklearn.neighbors import NearestNeighbors as NN
 
 import base64
 
@@ -62,6 +63,7 @@ class SessionData(db.Model):
     name = db.Column(db.String(500))
     basename_mappings = db.Column(db.PickleType)
     csv_mappings = db.Column(db.PickleType)
+    embeddings = db.Column(db.PickleType)
 
 with app.app_context():
     db.create_all()
@@ -156,92 +158,146 @@ def process_click_data():
                     mappings = np.array(session_data.frame_mappings).astype(int)
                     numbers = np.array(session_data.frame_numbers).astype(int)
                     assignments = np.array(session_data.assignments).astype(int)
+                    basenames = session_data.basename_mappings 
+                    csvs = session_data.csv_mappings
+                    embeddings = np.array(session_data.embeddings).astype(float)
 
-            csvfilepath = os.path.join(folder_path,csv_name)
-            mp4filepath = os.path.join(folder_path,basename+".mp4")
+    
+            frame_images = []
+            frames = []
+            frame_assignments = []
 
-            file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
-            file_j_df_array = np.array(file_j_df)
+            frame_numbers = []
+            frame_mappings = []
+            frame_basenames = []
+            frame_csvs = []
+            
+            window = 5
 
-            if mp4filepath is not None:
+            #start_mapping = np.where(frame_mapping==mapping)
+            if radio_button_value == 'single':
+                window = 0
+                frame_numbers.append(frame_number)
+                frame_mappings.append(frame_mapping)
+                frame_assignments.append(frame_assignment)
+                frame_basenames.append(basename)
+                frame_csvs.append(csv_name)
+
+                middle_index = window
+            
+            elif radio_button_value == 'sequential_mp4':
+                csvfilepath = os.path.join(folder_path,csv_name)
+
+                file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+                file_j_df_array = np.array(file_j_df) 
+
+                for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
+                    frame_numbers.append(i)   
+                for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
+                    frame_mappings.append(j)
+                    if j in mappings:
+                        index = np.where(mappings==j)[0][0]
+                        frame_assignments.append(int(assignments[index]))
+                    else: 
+                        frame_assignments.append('')
+
+                frame_basenames = [basename]*len(frame_numbers)
+                frame_csvs = [csv_name]*len(frame_numbers)
+
+                middle_index = window
+
+            elif radio_button_value == 'sequential_cluster':
+                indeces = np.where(assignments==frame_assignment)
+                
+                frame_numbers_unsorted = numbers[indeces]
+                frame_mappings_unsorted = mappings[indeces]
+                frame_assignments_unsorted = assignments[indeces]
+                sort_indices = np.argsort(frame_mappings_unsorted)
+                frame_numbers_sorted = frame_numbers_unsorted[sort_indices]
+                frame_mappings_sorted = frame_mappings_unsorted[sort_indices]
+                frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
+
+                index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
+
+                start_index = max(0, index - window)
+                end_index = min(len(frame_numbers_sorted), index + window + 1)
+            
+                frame_numbers = frame_numbers_sorted[start_index:end_index]
+                frame_mappings = frame_mappings_sorted[start_index:end_index]
+                frame_assignments = frame_assignments_sorted[start_index:end_index]
+
+                frame_numbers = frame_numbers.tolist()
+                frame_mappings = frame_mappings.tolist()
+                frame_assignments = frame_assignments.tolist()
+
+                frame_basenames = [basename]*len(frame_numbers)
+                frame_csvs = [csv_name]*len(frame_numbers)
+                
+                middle_index = window 
+
+            elif radio_button_value == 'embedded_space':
+                nn_model = NN(n_neighbors=10, algorithm='auto')
+                nn_model.fit(embeddings)
+
+                index = np.where(mappings==frame_mapping)[0][0]
+
+                distances, indices = nn_model.kneighbors([embeddings[index]])
+                
+                nearest_frames_numbers = [numbers[i] for i in indices[0]]
+                nearest_frames_mappings = [mappings[i] for i in indices[0]]
+                nearest_frames_assignments = [assignments[i] for i in indices[0]]
+                nearest_frame_basenames = [basenames[i] for i in indices[0]]
+                nearest_frame_csvs = [csvs[i] for i in indices[0]]
+
+                sort_indices = np.argsort(nearest_frames_mappings)
+
+                frame_mappings_sorted = [nearest_frames_mappings[i] for i in sort_indices]
+                frame_numbers_sorted = [nearest_frames_numbers[i] for i in sort_indices]
+                frame_assignments_sorted = [nearest_frames_assignments[i] for i in sort_indices]
+                frame_basenames_sorted = [nearest_frame_basenames[i] for i in sort_indices]
+                frame_cvs_sorted = [nearest_frame_csvs[i] for i in sort_indices]
+
+                frame_numbers = [int(num) for num in frame_numbers_sorted]
+                frame_mappings = [int(mapping) for mapping in frame_mappings_sorted]
+                frame_assignments = [int(assign) for assign in frame_assignments_sorted]
+                frame_basenames = frame_basenames_sorted
+                frame_csvs = frame_cvs_sorted
+
+                middle_index = int(np.where(np.array(frame_mappings_sorted)==frame_mapping)[0][0])
+
+            for k in range(len(frame_numbers)):
+                
+                mp4filepath = os.path.join(folder_path,frame_basenames[k]+".mp4")
                 mp4 = cv2.VideoCapture(mp4filepath)
-                frame_images = []
-                frames = []
-                frame_assignments = []
+                mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
+                ret, frame = mp4.read()
 
-                frame_numbers = []
-                frame_mappings = []
-                
-                window = 5
+                if ret: 
+                    if keypoints:
+                        csvfilepath = os.path.join(folder_path,frame_csvs[k])
 
-                #start_mapping = np.where(frame_mapping==mapping)
-                if radio_button_value == 'single':
-                    window = 0
-                    frame_numbers.append(frame_number)
-                    frame_mappings.append(frame_mapping)
-                    frame_assignments.append(frame_assignment)
-                
-                elif radio_button_value == 'sequential_mp4':
-                    for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
-                        frame_numbers.append(i)   
-                    for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
-                        frame_mappings.append(j)
-                        if j in mappings:
-                            index = np.where(mappings==j)[0][0]
-                            frame_assignments.append(int(assignments[index]))
-                        else: 
-                            frame_assignments.append('')
+                        file_j_df = pd.read_csv(csvfilepath, low_memory=False)          
+                        file_j_df_array = np.array(file_j_df) 
 
-                elif radio_button_value == 'sequential_cluster':
-                    indeces = np.where(assignments==frame_assignment)
+                        keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mappings[k]))][0]
+
+                        x = keypoint_data[1::3] 
+                        y = keypoint_data[2::3]
+
+                        xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
+                        xy = [(int(float(x)), int(float(y))) for x, y in xy]
+
+                        for point in xy: 
+                            cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
                     
-                    frame_numbers_unsorted = numbers[indeces]
-                    frame_mappings_unsorted = mappings[indeces]
-                    frame_assignments_unsorted = assignments[indeces]
-                    sort_indices = np.argsort(frame_mappings_unsorted)
-                    frame_numbers_sorted = frame_numbers_unsorted[sort_indices]
-                    frame_mappings_sorted = frame_mappings_unsorted[sort_indices]
-                    frame_assignments_sorted = frame_assignments_unsorted[sort_indices]
-
-                    index = np.where(frame_mappings_sorted==frame_mapping)[0][0]
-
-                    start_index = max(0, index - window)
-                    end_index = min(len(frame_numbers_sorted), index + window + 1)
+                    _, buffer = cv2.imencode('.jpg', frame)
+                    frame_data = base64.b64encode(buffer).decode('utf-8')
+                    frame_images.append(frame_data)
+                    frames.append(frame_mappings[k])
                 
-                    frame_numbers = frame_numbers_sorted[start_index:end_index]
-                    frame_mappings = frame_mappings_sorted[start_index:end_index]
-                    frame_assignments = frame_assignments_sorted[start_index:end_index]
+            mp4.release()
 
-                    frame_numbers = frame_numbers.tolist()
-                    frame_mappings = frame_mappings.tolist()
-                    frame_assignments = frame_assignments.tolist()
-                    
-                for k in range(len(frame_numbers)):
-                    mp4.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[k])
-                    ret, frame = mp4.read()
-
-                    if ret: 
-                        if keypoints:
-
-                            keypoint_data = file_j_df_array[np.where(file_j_df_array[:,0]==str(frame_mappings[k]))][0]
-
-                            x = keypoint_data[1::3] 
-                            y = keypoint_data[2::3]
-
-                            xy = np.concatenate([x.reshape(-1, 1), y.reshape(-1, 1)], axis=1)
-                            xy = [(int(float(x)), int(float(y))) for x, y in xy]
-
-                            for point in xy: 
-                                cv2.circle(frame, point, radius=5, color=(0, 0, 255), thickness = -1)
-                        
-                        _, buffer = cv2.imencode('.jpg', frame)
-                        frame_data = base64.b64encode(buffer).decode('utf-8')
-                        frame_images.append(frame_data)
-                        frames.append(frame_mappings[k])
-                    
-                mp4.release()
-
-            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': window})
+            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': middle_index, 'basenames': frame_basenames})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])
@@ -314,6 +370,9 @@ def home():
                     parameterform.hdbscan_cluster_max.data = HDBSCAN_max
                     uploadform.folder.data = folder_path
                     nameform.name.data = name+"_copy"
+                
+                elif filename == 'embedding.npy':
+                    embeddings = np.load(os.path.join(folder_path,name,filename))
 
         else: 
             
@@ -339,7 +398,7 @@ def home():
             
             nameform.name.data = name+"_copy"
             
-            graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings  = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
+            graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, embeddings  = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
         session_data = SessionData(
             folder_path=folder_path,
@@ -349,7 +408,8 @@ def home():
             keypoints=keypoints,
             name = name, 
             basename_mappings = basename_mappings, 
-            csv_mappings = csv_mappings
+            csv_mappings = csv_mappings,
+            embeddings = embeddings
         )
 
         db.session.add(session_data)
