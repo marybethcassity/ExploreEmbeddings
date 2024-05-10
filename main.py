@@ -193,7 +193,8 @@ def process_click_data():
 
                 for i in range(max(0, frame_number - window), min(len(file_j_df_array), frame_number + window + 1)):
                     frame_numbers.append(i)   
-                for j in range(max(0, frame_mapping - window), min(len(file_j_df_array), frame_mapping + window + 1)):
+        
+                for j in range(max(0, frame_mapping - window), min(len(file_j_df_array)+int(file_j_df_array[2, 0]), frame_mapping + window + 1)):
                     frame_mappings.append(j)
                     if j in mappings:
                         index = np.where(mappings==j)[0][0]
@@ -296,7 +297,6 @@ def process_click_data():
                     frames.append(frame_mappings[k])
                 
             mp4.release()
-
             return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': middle_index, 'basenames': frame_basenames})
 
 @app.route('/', methods = ["GET", "POST"])
@@ -432,7 +432,6 @@ def home():
                 name = session_data.name
                 basename_mappings = session_data.basename_mappings
                 csv_mappings = session_data.csv_mappings
-                print("name:", name)
         
         save_images(folder_path, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, keypoints, name)
     
