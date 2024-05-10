@@ -183,7 +183,7 @@ def process_click_data():
                 frame_basenames.append(basename)
                 frame_csvs.append(csv_name)
 
-                middle_index = window
+                start_index = window
             
             elif radio_button_value == 'sequential_mp4':
                 csvfilepath = os.path.join(folder_path,csv_name)
@@ -205,7 +205,7 @@ def process_click_data():
                 frame_basenames = [basename]*len(frame_numbers)
                 frame_csvs = [csv_name]*len(frame_numbers)
 
-                middle_index = window
+                start_index = window
 
             elif radio_button_value == 'sequential_cluster':
                 indeces = np.where(assignments==frame_assignment)
@@ -234,7 +234,7 @@ def process_click_data():
                 frame_basenames = [basename]*len(frame_numbers)
                 frame_csvs = [csv_name]*len(frame_numbers)
                 
-                middle_index = window 
+                start_index = window 
 
             elif radio_button_value == 'embedded_space':
                 nn_model = NN(n_neighbors=10, algorithm='auto')
@@ -250,21 +250,13 @@ def process_click_data():
                 nearest_frame_basenames = [basenames[i] for i in indices[0]]
                 nearest_frame_csvs = [csvs[i] for i in indices[0]]
 
-                sort_indices = np.argsort(nearest_frames_mappings)
+                frame_numbers = [int(num) for num in nearest_frames_numbers]
+                frame_mappings = [int(mapping) for mapping in nearest_frames_mappings]
+                frame_assignments = [int(assign) for assign in nearest_frames_assignments]
+                frame_basenames = nearest_frame_basenames
+                frame_csvs = nearest_frame_csvs
 
-                frame_mappings_sorted = [nearest_frames_mappings[i] for i in sort_indices]
-                frame_numbers_sorted = [nearest_frames_numbers[i] for i in sort_indices]
-                frame_assignments_sorted = [nearest_frames_assignments[i] for i in sort_indices]
-                frame_basenames_sorted = [nearest_frame_basenames[i] for i in sort_indices]
-                frame_cvs_sorted = [nearest_frame_csvs[i] for i in sort_indices]
-
-                frame_numbers = [int(num) for num in frame_numbers_sorted]
-                frame_mappings = [int(mapping) for mapping in frame_mappings_sorted]
-                frame_assignments = [int(assign) for assign in frame_assignments_sorted]
-                frame_basenames = frame_basenames_sorted
-                frame_csvs = frame_cvs_sorted
-
-                middle_index = int(np.where(np.array(frame_mappings_sorted)==frame_mapping)[0][0])
+                start_index = 0
 
             for k in range(len(frame_numbers)):
                 
@@ -297,7 +289,7 @@ def process_click_data():
                     frames.append(frame_mappings[k])
                 
             mp4.release()
-            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'middle_index': middle_index, 'basenames': frame_basenames})
+            return jsonify({'frame_data': frame_images, 'frames': frames, 'assignments': frame_assignments, 'start_index': start_index, 'basenames': frame_basenames})
 
 @app.route('/', methods = ["GET", "POST"])
 @app.route('/home', methods = ["GET", "POST"])

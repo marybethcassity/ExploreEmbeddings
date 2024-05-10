@@ -227,7 +227,6 @@ def learn_embeddings(UMAP_PARAMS, data):
 
     basename_indices = []
     for basename, content in data['files'].items():
-
         sampled_input_feats_list.append(content['sampled_input_feats'])
         scaled_features_list.append(content['scaled_features'])
         
@@ -243,7 +242,7 @@ def learn_embeddings(UMAP_PARAMS, data):
         frame_numbers.extend(content['sampled_frame_number'])
     
     concatenated_sampled_features = np.vstack(sampled_input_feats_list)
-    concatenated_scaled_features = np.vstack(scaled_features_list)
+    concatenated_scaled_features = np.hstack(scaled_features_list)
 
     pca = PCA()
     pca.fit(concatenated_scaled_features.T)
