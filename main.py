@@ -395,6 +395,21 @@ def home():
             
             graphJSON, frame_mappings, frame_numbers, assignments, basename_mappings, csv_mappings, embeddings  = return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, training_fraction, name)
 
+            distance_data = []
+            nn_model = NN(n_neighbors=5, algorithm='auto')
+            nn_model.fit(embeddings)
+
+            for index in range(len(embeddings)):
+                distances, indices = nn_model.kneighbors([embeddings[index]])
+                distances = distances[0].tolist()
+                #distances = distances[0].tolist()
+                distance_data.append(distances)
+
+            distance_df = pd.DataFrame(distance_data)
+            distance_df = distance_df.astype(float)
+    
+            distance_df.to_csv(os.path.join(folder_path, name, "distances.csv"), index=False, header=False, float_format='%.5f') 
+        
         session_data = SessionData(
             folder_path=folder_path,
             assignments=assignments,
@@ -411,6 +426,7 @@ def home():
         db.session.commit()
 
         session['session_data_id'] = session_data.id
+
         
     if clusterform.validate_on_submit() and clusterform.cluster.data:
 

@@ -97,19 +97,26 @@ def compute(processed_input_data, file_j_df_array, framerate):
             dxy_list = []
             disp_list = []
 
+            # (MB, 5/21/2024): calculate the interframe distance of the body parts from frame n to frame n + 1 
+
             for r in range(data_n_len):
                 if r < data_n_len - 1:
                     disp = []
                     for c in range(0, processed_input_data[n].shape[1], 2):
+                        
                         disp.append(
                             np.linalg.norm(processed_input_data[n][r + 1, c:c + 2] -
                                         processed_input_data[n][r, c:c + 2]))
-                    disp_list.append(disp)
+                    disp_list.append(disp) # (MB, 5/21/2024): append the interframe distances for each row to the big list
+                
+                # (MB, 5/21/2024): calculate the pairwise distance vectors from each body part to each of the other body parts
+
                 dxy = []
                 for i, j in itertools.combinations(range(0, processed_input_data[n].shape[1], 2), 2):
                     dxy.append(processed_input_data[n][r, i:i + 2] -
                             processed_input_data[n][r, j:j + 2])
-                dxy_list.append(dxy)
+                
+                dxy_list.append(dxy) # (MB, 5/21/2024): append the pairwise distance vectors for each row to the big list
             disp_r = np.array(disp_list)
             dxy_r = np.array(dxy_list)
             disp_boxcar = []
@@ -117,12 +124,19 @@ def compute(processed_input_data, file_j_df_array, framerate):
             ang = np.zeros([data_n_len - 1, dxy_r.shape[1]])
             dxy_boxcar = []
             ang_boxcar = []
+
+            # (MB, 5/21/2024): average the interframe distance values with a rolling average with a window size of 3 ( window = int(np.round(0.05 / (1 / framerate)) * 2 - 1) )
+
             for l in range(disp_r.shape[1]):
                 disp_boxcar.append(boxcar_center(disp_r[:, l], window))
-            for k in range(dxy_r.shape[1]):
-                for kk in range(data_n_len):
-                    dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :])
+            
+            
+            for k in range(dxy_r.shape[1]): # (MB, 5/21/2024): for each column of dxr
+                for kk in range(data_n_len): # (MB, 5/21/2024): for each row
+                    dxy_eu[kk, k] = np.linalg.norm(dxy_r[kk, k, :]) # (MB, 5/21/2024): calculate the pairwise euclidean distance
                     if kk < data_n_len - 1:
+                        
+                        # (MB, 5/21/2024): calculate the interframe angles of the body parts 
                         b_3d = np.hstack([dxy_r[kk + 1, k, :], 0])
                         a_3d = np.hstack([dxy_r[kk, k, :], 0])
                         c = np.cross(b_3d, a_3d)
@@ -140,9 +154,12 @@ def compute(processed_input_data, file_j_df_array, framerate):
         frame_mapping  = []
         frame_number = []
 
+        # (MB, 5/21/2024): calculate the mean of the distance features and the sum of the angle features in a window size of 3
+
         for m in range(0, len(f)):
             f_integrated = np.zeros(len(processed_input_data[m]))
             for k in range(round(framerate / 10), len(f[m][0]), round(framerate / 10)):
+                print(k)
                 frame_number.append(k-1)
                 frame_mapping.append(file_j_df_array[k-1+2][0])
                 if k > round(framerate / 10):
@@ -225,6 +242,8 @@ def learn_embeddings(UMAP_PARAMS, data):
     frame_mappings = []
     frame_numbers = []
 
+    m = 0 
+
     basename_indices = []
     for basename, content in data['files'].items():
         sampled_input_feats_list.append(content['sampled_input_feats'])
@@ -240,18 +259,45 @@ def learn_embeddings(UMAP_PARAMS, data):
         csv_mappings.extend(csv_name_repeated)
         frame_mappings.extend(content['sampled_frame_mapping'])
         frame_numbers.extend(content['sampled_frame_number'])
+
+        f_integrated = content['features']
+
+        if m > 0:
+            features = np.concatenate((features, f_integrated), axis=1)
+            scaler = StandardScaler()
+            scaler.fit(f_integrated.T)
+            scaled_f_integrated = scaler.transform(f_integrated.T).T
+            scaled_features = np.concatenate((scaled_features, scaled_f_integrated), axis=1)
+        else:
+            features = f_integrated
+            scaler = StandardScaler()
+            scaler.fit(f_integrated.T)
+            scaled_f_integrated = scaler.transform(f_integrated.T).T
+            scaled_features = scaled_f_integrated
+        m = m + 1
     
     concatenated_sampled_features = np.vstack(sampled_input_feats_list)
     concatenated_scaled_features = np.hstack(scaled_features_list)
 
+    
+    input_feats = scaled_features.T
+
     pca = PCA()
-    pca.fit(concatenated_scaled_features.T)
+    pca.fit(input_feats)
     num_dimensions = np.argwhere(np.cumsum(pca.explained_variance_ratio_) >= 0.7)[0][0] + 1
-   
+
+    np.random.seed(0)
+    sampled_input_feats = input_feats[np.random.choice(input_feats.shape[0], input_feats.shape[0], replace=False)]
+ 
     learned_embeddings = UMAP(n_neighbors=60, n_components=num_dimensions,
-                                                **UMAP_PARAMS).fit(concatenated_sampled_features)
+                                                **UMAP_PARAMS).fit(sampled_input_feats)
 
     sampled_embeddings = learned_embeddings.embedding_
+
+    print("input_feats: ", np.shape(input_feats))
+    print("sampled_input_feats: ", np.shape(sampled_input_feats))
+    print("sampled_embeddings: ", np.shape(sampled_embeddings))
+    print("num_dimensions: ", num_dimensions)
 
     current_index = 0
     for basename, count in basename_indices:
@@ -259,7 +305,7 @@ def learn_embeddings(UMAP_PARAMS, data):
         data['files'][basename]['sampled_embeddings'] = sampled_embeddings[current_index:current_index + count]
         current_index += count
 
-    return sampled_embeddings, data, basename_mappings, csv_mappings, frame_mappings, frame_numbers
+    return sampled_embeddings, data, basename_mappings, csv_mappings, frame_mappings, frame_numbers, scaled_features
 
 # bsoid_app/clustering.py # edited 
 def hierarchy(cluster_range, sampled_embeddings, HDBSCAN_PARAMS):

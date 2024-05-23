@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import time
+import re
 
 #from celery import Celery
 
@@ -30,7 +31,13 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
     'HDBSCAN_max': cluster_range[1],
     'files': {}
 }
-    for filename in os.listdir(folder_path):
+    def numerical_sort_key(s):
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+
+    csv_files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
+    csv_files_sorted = sorted(csv_files, key=numerical_sort_key)
+
+    for filename in csv_files_sorted:
         if filename.endswith('.csv'):
             csvfilepath = os.path.join('uploads', 'csvs', filename)
             #csvfilename = filename
@@ -105,8 +112,9 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
 
     # concatenate all scaled features and sampled input feats --> learn_embeddings
 
-    sampled_embeddings, data, basename_mappings, csv_mappings, frame_mappings, frame_numbers  = learn_embeddings(UMAP_PARAMS, dict_data)
-
+    sampled_embeddings, data, basename_mappings, csv_mappings, frame_mappings, frame_numbers, features  = learn_embeddings(UMAP_PARAMS, dict_data)
+    
+    
     # time_learn_embeddings = time.time()-time_start_2
     # time_start_2 = time.time()
 
@@ -138,6 +146,9 @@ def return_plot(folder_path, fps, UMAP_PARAMS, cluster_range, HDBSCAN_PARAMS, tr
     
     if not os.path.isdir(os.path.join(folder_path, name)):
         os.mkdir(os.path.join(folder_path, name))
+
+    features_df = pd.DataFrame(features.T)
+    features_df.to_csv(os.path.join(folder_path, name, 'features.csv'),header=False, float_format='%.5f')
 
     df.to_csv(os.path.join(folder_path, name, "data.csv"), index=False) 
 
